@@ -1,0 +1,65 @@
+# Unitree L2 LiDAR Configuration Template
+# Copy this file to lidar_config.yaml and adjust values for your setup
+
+lidar:
+  # Network settings
+  ip_address: "192.168.1.1"  # Update with your sensor's IP address
+  port: 2368                  # Update with your sensor's port
+  timeout: 5.0                # Connection timeout in seconds
+
+  # Sensor parameters
+  frame_rate: 10              # Frames per second (Hz)
+  range_min: 0.5              # Minimum range in meters
+  range_max: 30.0             # Maximum range in meters
+
+  # Data capture settings
+  auto_connect: true          # Automatically connect on startup
+  auto_start_streaming: true  # Automatically start streaming on connect
+
+# Data storage
+storage:
+  raw_data_dir: "data/raw"
+  processed_data_dir: "data/processed"
+  save_formats:
+    - "npy"   # NumPy binary format
+    - "pcd"   # Point Cloud Data format
+  compress: false
+
+# Processing settings
+processing:
+  # Outlier removal
+  outlier_removal:
+    enabled: true
+    nb_neighbors: 20
+    std_ratio: 2.0
+
+  # Downsampling
+  downsampling:
+    enabled: true
+    voxel_size: 0.05  # meters
+
+  # Ground segmentation
+  ground_segmentation:
+    enabled: true
+    distance_threshold: 0.1
+    ransac_n: 3
+    num_iterations: 1000
+
+  # Normal estimation
+  normal_estimation:
+    enabled: true
+    search_radius: 0.5
+    max_neighbors: 30
+
+# Visualization
+visualization:
+  default_window_size: [1024, 768]
+  point_size: 2.0
+  background_color: [0.1, 0.1, 0.1]
+  colormap: "viridis"
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_file: "logs/lidar_system.log"
+  console_output: true

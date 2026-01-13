@@ -1,0 +1,36 @@
+# Core dependencies for Unitree L2 LiDAR Trail Mapping Project
+
+# LiDAR and Point Cloud Processing
+numpy>=1.24.0
+pandas>=2.0.0
+open3d>=0.17.0
+scipy>=1.10.0
+
+# Visualization
+matplotlib>=3.7.0
+plotly>=5.14.0
+
+# Data handling
+h5py>=3.8.0
+pillow>=9.5.0
+
+# Utilities
+pyyaml>=6.0
+python-dotenv>=1.0.0
+tqdm>=4.65.0
+
+# Testing
+pytest>=7.3.0
+pytest-cov>=4.1.0
+
+# Optional: ROS integration (uncomment if using ROS)
+# rospkg>=1.5.0
+# rospy>=1.16.0
+
+# Backend (for Phase 2)
+# flask>=2.3.0
+# flask-cors>=4.0.0
+# flask-restful>=0.3.10
+# psycopg2-binary>=2.9.6
+# pymongo>=4.3.3
+# boto3>=1.26.0
