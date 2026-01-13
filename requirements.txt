@@ -3,8 +3,9 @@
 # LiDAR and Point Cloud Processing
 numpy>=1.24.0
 pandas>=2.0.0
-open3d>=0.17.0
+# open3d>=0.17.0  # Not yet compatible with Python 3.13 - install manually or use Python 3.11
 scipy>=1.10.0
+scikit-learn>=1.3.0  # For point cloud processing algorithms
 
 # Visualization
 matplotlib>=3.7.0

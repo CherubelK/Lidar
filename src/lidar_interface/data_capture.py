@@ -4,7 +4,14 @@ Handles capturing and saving LiDAR data streams to disk.
 """
 
 import numpy as np
-import open3d as o3d
+try:
+    import open3d as o3d
+    HAS_OPEN3D = True
+except ImportError:
+    HAS_OPEN3D = False
+    import warnings
+    warnings.warn("Open3D not available. PCD file saving will be disabled. Install Open3D for full functionality.")
+
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -195,11 +202,12 @@ class LiDARDataCapture:
         npy_file = self.session_dir / f"{filename_base}.npy"
         np.save(npy_file, points)
 
-        # Save as PCD file (Open3D format, good for visualization)
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(points)
-        pcd_file = self.session_dir / f"{filename_base}.pcd"
-        o3d.io.write_point_cloud(str(pcd_file), pcd)
+        # Save as PCD file if Open3D is available
+        if HAS_OPEN3D:
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(points)
+            pcd_file = self.session_dir / f"{filename_base}.pcd"
+            o3d.io.write_point_cloud(str(pcd_file), pcd)
 
     def load_session_frames(self, session_name: str) -> List[np.ndarray]:
         """
