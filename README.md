@@ -1,17 +1,37 @@
 # Unitree L2 LiDAR Hiking Trail Mapping
 
-A Python-based system for capturing, processing, and visualizing hiking trail data using the Unitree L2 LiDAR sensor.
+A complete Python-based system for capturing, processing, and visualizing hiking trail data using the Unitree L2 LiDAR sensor, with interactive web-based 3D visualization.
 
 ## Project Status
 
-🚧 **Phase 1: LiDAR Data Capture and Processing** - In Development
+✅ **Phase 1: LiDAR Data Capture and Processing** - Core Complete
+🚀 **Phase 1.5: 3D Mesh Generation & Web Visualization** - Complete
+📋 **Phase 2: Backend Development** - Planned
 
 ## Features
 
-- LiDAR data capture interface for Unitree L2 sensor
-- Point cloud processing and filtering
-- 3D visualization tools
-- Trail data storage and management
+### Data Capture & Processing
+- ✅ LiDAR data capture interface for Unitree L2 sensor
+- ✅ UDP-based real-time data reception
+- ✅ Point cloud processing and filtering
+- ✅ Statistical outlier removal
+- ✅ Ground plane segmentation (RANSAC)
+- ✅ Voxel-based downsampling
+- ✅ Normal estimation
+
+### 3D Mapping & Visualization
+- ✅ 3D mesh generation from point clouds
+- ✅ Multiple export formats (OBJ, PLY, JSON)
+- ✅ Interactive web-based 3D viewer
+- ✅ Height-based elevation coloring
+- ✅ Multiple display modes (solid, wireframe, points)
+- ✅ Camera controls and presets
+- ✅ Screenshot export
+
+### Trail Data Management
+- ✅ Session-based capture organization
+- ✅ Multi-format storage (NPY, NPZ, JSON, OBJ, PLY)
+- ✅ Metadata tracking
 
 ## Project Structure
 
@@ -74,7 +94,38 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### Capturing LiDAR Data
+### Complete Pipeline: Scan and Build 3D Map
+
+The easiest way to get started is using the complete pipeline script:
+
+```bash
+# Scan a trail and generate 3D visualization (using synthetic data for testing)
+python examples/scan_and_build_map.py my_trail --duration 60
+
+# Or with real Unitree L2 hardware:
+python examples/scan_and_build_map.py my_trail --duration 120 --real-sensor
+```
+
+This will:
+1. Capture LiDAR data from the trail
+2. Process and clean the point cloud
+3. Generate 3D mesh
+4. Export to multiple formats (OBJ, PLY, JSON)
+5. Prepare for web visualization
+
+Then view the results:
+
+```bash
+# Start the web viewer
+cd web
+python server.py
+```
+
+Open `http://localhost:8000` in your browser and select your trail from the dropdown.
+
+### Manual Workflow
+
+#### Step 1: Capturing LiDAR Data
 
 ```python
 from src.lidar_interface import LiDARDataCapture
