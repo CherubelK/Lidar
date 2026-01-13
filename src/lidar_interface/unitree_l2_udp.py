@@ -190,9 +190,16 @@ class UnitreeL2UDP:
 
                 try:
                     # Extract x, y, z as float32 (little-endian)
-                    x = struct.unpack('<f', data[offset:offset+4])[0]
-                    y = struct.unpack('<f', data[offset+4:offset+8])[0]
-                    z = struct.unpack('<f', data[offset+8:offset+12])[0]
+                    # NOTE: Based on diagnostic analysis, swapping Y and Z to correct coordinate system
+                    # Unitree L2 coordinate system: +X (opposite cable outlet), +Y (90° CCW from +X), +Z (perpendicular up)
+                    x_raw = struct.unpack('<f', data[offset:offset+4])[0]
+                    y_raw = struct.unpack('<f', data[offset+4:offset+8])[0]
+                    z_raw = struct.unpack('<f', data[offset+8:offset+12])[0]
+
+                    # Swap Y and Z to match expected coordinate system
+                    x = x_raw
+                    y = z_raw  # Z from packet becomes Y (depth/forward)
+                    z = y_raw  # Y from packet becomes Z (up/down)
 
                     # Skip invalid points
                     if not (np.isfinite(x) and np.isfinite(y) and np.isfinite(z)):
