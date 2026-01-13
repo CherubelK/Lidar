@@ -35,6 +35,7 @@ function loadAvailableModels() {
     // Example models list
     availableModels = [
         { name: 'Test Trail', file: 'models/test_trail.json', date: '2026-01-12' },
+        { name: 'My Room (Real Scan)', file: 'models/my_room.json', date: '2026-01-12' },
         // Add more models as they become available
     ];
 

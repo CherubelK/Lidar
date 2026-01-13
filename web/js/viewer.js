@@ -90,12 +90,12 @@ class TrailViewer {
     }
 
     addGrid() {
-        this.grid = new THREE.GridHelper(50, 50, 0x667eea, 0x333333);
+        this.grid = new THREE.GridHelper(20, 20, 0x667eea, 0x333333);
         this.scene.add(this.grid);
     }
 
     addAxes() {
-        this.axes = new THREE.AxesHelper(5);
+        this.axes = new THREE.AxesHelper(10);
         this.scene.add(this.axes);
     }
 
@@ -169,18 +169,38 @@ class TrailViewer {
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
 
-        // Center the mesh
-        geometry.computeBoundingBox();
-        const center = new THREE.Vector3();
-        geometry.boundingBox.getCenter(center);
-        this.mesh.position.sub(center);
-
+        // Add mesh to scene first
         this.scene.add(this.mesh);
+
+        // Center and scale the mesh
+        geometry.computeBoundingBox();
+        const box = geometry.boundingBox;
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+
+        // Calculate current size
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+
+        console.log(`Original mesh bounds: X=[${box.min.x.toFixed(2)}, ${box.max.x.toFixed(2)}] Y=[${box.min.y.toFixed(2)}, ${box.max.y.toFixed(2)}] Z=[${box.min.z.toFixed(2)}, ${box.max.z.toFixed(2)}]`);
+        console.log(`Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}`);
+        console.log(`Center: ${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)}`);
+
+        // Scale to a reasonable size (target max dimension of 15 units)
+        const targetSize = 15;
+        const scale = targetSize / maxDim;
+        this.mesh.scale.set(scale, scale, scale);
+
+        // Center the mesh at origin
+        this.mesh.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+
+        console.log(`Mesh loaded: ${positions.length / 3} vertices, ${indices.length / 3} faces`);
+        console.log(`Scale factor: ${scale.toFixed(3)}`);
+        console.log(`Scaled size: ${(size.x * scale).toFixed(2)} x ${(size.y * scale).toFixed(2)} x ${(size.z * scale).toFixed(2)}`);
 
         // Update camera to frame the object
         this.frameMesh();
-
-        console.log(`Mesh loaded: ${positions.length / 3} vertices, ${indices.length / 3} faces`);
     }
 
     applyHeightColors(geometry) {
@@ -228,17 +248,29 @@ class TrailViewer {
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
 
+        console.log(`Framing mesh - Center: (${center.x.toFixed(2)}, ${center.y.toFixed(2)}, ${center.z.toFixed(2)})`);
+        console.log(`Framing mesh - Size: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}`);
+
         const maxDim = Math.max(size.x, size.y, size.z);
         const fov = this.camera.fov * (Math.PI / 180);
-        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-        cameraZ *= 1.5; // Add some padding
+        let cameraDistance = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+        cameraDistance *= 2.0; // Add more padding to see the whole mesh
 
-        this.camera.position.set(cameraZ, cameraZ * 0.7, cameraZ);
+        console.log(`Camera distance: ${cameraDistance.toFixed(2)}`);
+
+        // Position camera at a 45-degree angle to see the mesh better
+        this.camera.position.set(
+            center.x + cameraDistance * 0.7,
+            center.y + cameraDistance * 0.7,
+            center.z + cameraDistance * 0.7
+        );
         this.camera.lookAt(center);
         this.camera.updateProjectionMatrix();
 
         this.controls.target.copy(center);
         this.controls.update();
+
+        console.log(`Camera positioned at: (${this.camera.position.x.toFixed(2)}, ${this.camera.position.y.toFixed(2)}, ${this.camera.position.z.toFixed(2)})`);
     }
 
     setDisplayMode(mode) {

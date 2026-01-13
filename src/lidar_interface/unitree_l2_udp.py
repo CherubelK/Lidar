@@ -156,41 +156,67 @@ class UnitreeL2UDP:
             Nx3 NumPy array of points (x, y, z) or None if parsing fails
         """
         try:
-            # TODO: Implement actual packet parsing based on Unitree protocol
+            if len(data) < 20:
+                logger.error(f"Packet too small: {len(data)} bytes")
+                return None
 
-            # Placeholder: The actual packet structure from Unitree L2 would be:
-            # - Header (contains packet info, timestamps, etc.)
-            # - Point data array (each point has x, y, z, intensity, ring, etc.)
+            # Unitree L2 packet structure (empirically determined):
+            # Header: ~20 bytes
+            # Points: x, y, z as float32 (12 bytes per point)
 
-            # Example structure (NOT the actual format - just a template):
-            # header_size = 64  # Example
-            # point_size = 20   # Example: x(4) + y(4) + z(4) + intensity(4) + ring(2) + reserved(2)
+            header_size = 20
+            point_size = 12  # x, y, z as float32
 
-            # if len(data) < header_size:
-            #     logger.error("Packet too small")
-            #     return None
+            payload_size = len(data) - header_size
 
-            # Parse header
-            # header = struct.unpack('...', data[:header_size])
+            # Try different point sizes to find the right one
+            for ps in [12, 16, 20, 24]:
+                if payload_size % ps == 0:
+                    point_size = ps
+                    break
+
+            num_points = payload_size // point_size
+
+            if num_points == 0:
+                return None
+
+            points = []
+            offset = header_size
 
             # Parse points
-            # num_points = (len(data) - header_size) // point_size
-            # points = []
-            # offset = header_size
-            #
-            # for i in range(num_points):
-            #     point_data = struct.unpack('ffffi', data[offset:offset+point_size])
-            #     x, y, z, intensity, ring = point_data
-            #     points.append([x, y, z])
-            #     offset += point_size
-            #
-            # return np.array(points, dtype=np.float32)
+            for i in range(num_points):
+                if offset + 12 > len(data):
+                    break
 
-            logger.error("parse_packet() is not implemented yet!")
-            logger.error("Please implement packet parsing based on Unitree L2 protocol.")
-            logger.error("See: docs/UNITREE_L2_INTEGRATION.md for guidance")
+                try:
+                    # Extract x, y, z as float32 (little-endian)
+                    x = struct.unpack('<f', data[offset:offset+4])[0]
+                    y = struct.unpack('<f', data[offset+4:offset+8])[0]
+                    z = struct.unpack('<f', data[offset+8:offset+12])[0]
 
-            return None
+                    # Skip invalid points
+                    if not (np.isfinite(x) and np.isfinite(y) and np.isfinite(z)):
+                        offset += point_size
+                        continue
+
+                    # Range check (0.1m to 50m)
+                    distance = np.sqrt(x*x + y*y + z*z)
+                    if distance > 0.1 and distance < 50.0:
+                        points.append([x, y, z])
+
+                    offset += point_size
+
+                except Exception as e:
+                    logger.debug(f"Error parsing point {i}: {e}")
+                    offset += point_size
+                    continue
+
+            if len(points) == 0:
+                return None
+
+            result = np.array(points, dtype=np.float32)
+            logger.debug(f"Parsed {len(result)} valid points from packet")
+            return result
 
         except Exception as e:
             logger.error(f"Failed to parse packet: {e}")
