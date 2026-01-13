@@ -14,12 +14,20 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LiDARConfig:
     """Configuration parameters for Unitree L2 LiDAR"""
-    ip_address: str = "192.168.1.1"  # Default IP - check Unitree docs
-    port: int = 2368  # Default port - check Unitree docs
+    # Network settings (default Unitree L2 values)
+    ip_address: str = "192.168.1.62"  # Sensor IP
+    port: int = 6101  # Sensor port
+    host_ip: str = "192.168.1.2"  # Your computer's IP
+    host_port: int = 6201  # Receiving port on your computer
+
+    # Sensor parameters
     frame_rate: int = 10  # Hz
     range_min: float = 0.5  # meters
     range_max: float = 30.0  # meters
     timeout: float = 5.0  # seconds
+
+    # Connection mode
+    use_udp: bool = False  # Set to True to use UDP receiver instead of placeholder
 
 
 class UnitreeL2LiDAR:
