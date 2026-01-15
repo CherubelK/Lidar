@@ -253,35 +253,11 @@ class MeshGenerator:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Three.js BufferGeometry format
+        # Simple format for web viewer
         export_data = {
-            "metadata": {
-                "version": 4.5,
-                "type": "BufferGeometry",
-                "generator": "Unitree L2 LiDAR Trail Mapper"
-            },
-            "data": {
-                "attributes": {
-                    "position": {
-                        "itemSize": 3,
-                        "type": "Float32Array",
-                        "array": mesh_data['vertices'].flatten().tolist()
-                    }
-                },
-                "index": {
-                    "type": "Uint32Array",
-                    "array": mesh_data['faces'].flatten().tolist()
-                }
-            }
+            "vertices": mesh_data['vertices'].flatten().tolist(),
+            "faces": mesh_data['faces'].flatten().tolist()
         }
-
-        # Add normals if available
-        if 'normals' in mesh_data and mesh_data['normals'] is not None:
-            export_data["data"]["attributes"]["normal"] = {
-                "itemSize": 3,
-                "type": "Float32Array",
-                "array": mesh_data['normals'].flatten().tolist()
-            }
 
         with open(output_path, 'w') as f:
             json.dump(export_data, f)

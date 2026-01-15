@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unitree L2 LiDAR 3D Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            color: #333;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        select, button {
+            padding: 10px 20px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            color: #667eea;
+        }
+
+        select:hover, button:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        /* Main viewer area */
+        #viewer-container {
+            flex: 1;
+            position: relative;
+            background: #1a1a2e;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Stats panel */
+        #stats {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            min-width: 250px;
+            font-size: 14px;
+        }
+
+        #stats h3 {
+            margin-bottom: 12px;
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        /* View mode panel */
+        #view-modes {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        #view-modes h3 {
+            margin-bottom: 12px;
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .view-button {
+            width: 100%;
+            margin: 8px 0;
+            padding: 12px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .view-button:hover {
+            border-color: #667eea;
+            color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .view-button.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        /* Loading overlay */
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #loading-text {
+            font-size: 18px;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        #loading-detail {
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Instructions */
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            display: flex;
+            gap: 30px;
+            font-size: 13px;
+        }
+
+        .instruction {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instruction-key {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .instruction-text {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">L2</div>
+                <h1>Unitree L2 LiDAR 3D Viewer</h1>
+            </div>
+            <div class="controls">
+                <select id="scan-select">
+                    <option value="">Select a scan...</option>
+                </select>
+                <button id="reset-view">Reset View</button>
+                <button id="auto-rotate" data-active="false">Auto Rotate</button>
+            </div>
+        </header>
+
+        <div id="viewer-container">
+            <div id="canvas-container"></div>
+
+            <div id="stats">
+                <h3>Scan Statistics</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Vertices:</span>
+                    <span class="stat-value" id="stat-vertices">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Faces:</span>
+                    <span class="stat-value" id="stat-faces">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Dimensions:</span>
+                    <span class="stat-value" id="stat-dimensions">-</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Scan Name:</span>
+                    <span class="stat-value" id="stat-name">-</span>
+                </div>
+            </div>
+
+            <div id="view-modes">
+                <h3>View Mode</h3>
+                <button class="view-button active" data-mode="solid">Solid Surface</button>
+                <button class="view-button" data-mode="wireframe">Wireframe</button>
+                <button class="view-button" data-mode="points">Point Cloud</button>
+                <button class="view-button" data-mode="transparent">Transparent</button>
+            </div>
+
+            <div id="instructions">
+                <div class="instruction">
+                    <span class="instruction-key">Left Click</span>
+                    <span class="instruction-text">Rotate</span>
+                </div>
+                <div class="instruction">
+                    <span class="instruction-key">Right Click</span>
+                    <span class="instruction-text">Pan</span>
+                </div>
+                <div class="instruction">
+                    <span class="instruction-key">Scroll</span>
+                    <span class="instruction-text">Zoom</span>
+                </div>
+            </div>
+
+            <div id="loading">
+                <div class="spinner"></div>
+                <div id="loading-text">Initializing 3D viewer...</div>
+                <div id="loading-detail"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/lidar-viewer.js"></script>
+</body>
+</html>

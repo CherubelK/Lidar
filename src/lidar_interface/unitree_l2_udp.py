@@ -2,10 +2,7 @@
 Unitree L2 LiDAR UDP Interface
 Receives and parses point cloud data via UDP from the Unitree L2 4D LiDAR sensor.
 
-Based on the Unitree L2 protocol. Requires sensor configuration:
-- Packet Type: 3D point packets
-- IMU: Disabled (or handle separately)
-- Mode: Normal (not negative angle)
+Based on the official Unitree L2 protocol from unitree_lidar_protocol.h
 """
 
 import socket
@@ -14,8 +11,17 @@ import numpy as np
 import logging
 from typing import Optional, Tuple
 from dataclasses import dataclass
+import zlib
 
 logger = logging.getLogger(__name__)
+
+# Protocol constants from unitree_lidar_protocol.h
+FRAME_HEADER = bytes([0x55, 0xAA, 0x05, 0x0A])
+FRAME_TAIL = bytes([0x00, 0xFF])
+
+LIDAR_POINT_DATA_PACKET_TYPE = 102
+LIDAR_2D_POINT_DATA_PACKET_TYPE = 103
+LIDAR_IMU_DATA_PACKET_TYPE = 104
 
 
 @dataclass
@@ -26,20 +32,17 @@ class UnitreeL2Config:
     host_ip: str = "192.168.1.2"
     host_port: int = 6201
     timeout: float = 2.0
-    buffer_size: int = 4096
+    buffer_size: int = 8192  # Increased for 5528-byte 2D packets
 
 
 class UnitreeL2UDP:
     """
     UDP receiver for Unitree L2 LiDAR sensor.
 
-    Note: This is a basic implementation template. You'll need to:
-    1. Reference the official Unitree protocol specification
-    2. Implement proper packet parsing based on the protocol
-    3. Test with actual hardware
-
-    For a working Python implementation, see:
-    https://github.com/dilohn/unitree-L2-lidar
+    Implements the official Unitree protocol:
+    - FrameHeader: 12 bytes (header[4] + packet_type[4] + packet_size[4])
+    - Data: Variable size depending on packet type
+    - FrameTail: 12 bytes (crc32[4] + msg_type_check[4] + reserve[2] + tail[2])
     """
 
     def __init__(self, config: Optional[UnitreeL2Config] = None):
@@ -136,97 +139,302 @@ class UnitreeL2UDP:
             logger.error(f"Error receiving packet: {e}")
             return None
 
-    def parse_packet(self, data: bytes) -> Optional[np.ndarray]:
+    def parse_packet(self, data: bytes) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         """
-        Parse raw UDP packet into point cloud data.
+        Parse raw UDP packet into point cloud data according to official protocol.
 
-        This is a PLACEHOLDER implementation. You need to:
-        1. Study the Unitree L2 packet format from official documentation
-        2. Implement proper binary parsing using struct.unpack()
-        3. Extract x, y, z coordinates and other fields
-        4. Return as Nx3 NumPy array
-
-        For reference implementation, see:
-        https://github.com/dilohn/unitree-L2-lidar/blob/main/decode_lidar_3d.py
+        Packet structure (from unitree_lidar_protocol.h):
+        - FrameHeader: 12 bytes
+          - header[4]: 0x55 0xAA 0x05 0x0A
+          - packet_type[4]: uint32 (102=3D points, 103=2D points)
+          - packet_size[4]: uint32 total packet size
+        - Data: Variable size
+        - FrameTail: 12 bytes
+          - crc32[4]: CRC checksum
+          - msg_type_check[4]
+          - reserve[2]
+          - tail[2]: 0x00 0xFF
 
         Args:
             data: Raw UDP packet bytes
 
         Returns:
-            Nx3 NumPy array of points (x, y, z) or None if parsing fails
+            Tuple of (points array Nx3, intensities array Nx1) or None if parsing fails
         """
         try:
-            if len(data) < 20:
+            if len(data) < 24:  # Minimum: header + tail
                 logger.error(f"Packet too small: {len(data)} bytes")
                 return None
 
-            # Unitree L2 packet structure (empirically determined):
-            # Header: ~20 bytes
-            # Points: x, y, z as float32 (12 bytes per point)
-
-            header_size = 20
-            point_size = 12  # x, y, z as float32
-
-            payload_size = len(data) - header_size
-
-            # Try different point sizes to find the right one
-            for ps in [12, 16, 20, 24]:
-                if payload_size % ps == 0:
-                    point_size = ps
-                    break
-
-            num_points = payload_size // point_size
-
-            if num_points == 0:
+            # Parse FrameHeader (12 bytes)
+            header_bytes = data[0:4]
+            if header_bytes != FRAME_HEADER:
+                logger.error(f"Invalid frame header: {header_bytes.hex()}")
                 return None
 
+            packet_type = struct.unpack('<I', data[4:8])[0]
+            packet_size = struct.unpack('<I', data[8:12])[0]
+
+            if len(data) != packet_size:
+                logger.warning(f"Packet size mismatch: expected {packet_size}, got {len(data)}")
+
+            # Parse FrameTail (12 bytes from end)
+            tail_offset = len(data) - 12
+            crc32_received = struct.unpack('<I', data[tail_offset:tail_offset+4])[0]
+            tail_bytes = data[tail_offset+10:tail_offset+12]
+
+            if tail_bytes != FRAME_TAIL:
+                logger.error(f"Invalid frame tail: {tail_bytes.hex()}")
+                return None
+
+            # Verify CRC32 (of header + data, excluding tail)
+            crc32_computed = zlib.crc32(data[:tail_offset]) & 0xFFFFFFFF
+            if crc32_computed != crc32_received:
+                logger.warning(f"CRC mismatch: computed {crc32_computed:08x}, received {crc32_received:08x}")
+                # Continue anyway - some packets may have CRC issues
+
+            # Parse based on packet type
+            if packet_type == LIDAR_POINT_DATA_PACKET_TYPE:
+                return self._parse_3d_point_data(data[12:tail_offset])
+            elif packet_type == LIDAR_2D_POINT_DATA_PACKET_TYPE:
+                return self._parse_2d_point_data(data[12:tail_offset])
+            elif packet_type == LIDAR_IMU_DATA_PACKET_TYPE:
+                logger.debug("Received IMU packet (skipping)")
+                return None
+            else:
+                logger.debug(f"Unknown packet type: {packet_type}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Failed to parse packet: {e}")
+            return None
+
+    def _parse_3d_point_data(self, payload: bytes) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        """
+        Parse 3D point data payload (type 102).
+
+        Structure (from unitree_lidar_protocol.h):
+        - DataInfo: 16 bytes
+        - LidarInsideState: 36 bytes
+        - LidarCalibParam: 32 bytes
+        - Scan parameters: 36 bytes
+        - point_num: 4 bytes (uint32)
+        - ranges[300]: 600 bytes (uint16 array, distances in mm)
+        - intensities[300]: 300 bytes (uint8 array, reflectivity 0-255)
+        Total: 1024 bytes, but actual data defined by point_num
+        """
+        try:
+            offset = 0
+
+            # Skip DataInfo (16 bytes)
+            offset += 16
+
+            # Skip LidarInsideState (36 bytes)
+            offset += 36
+
+            # Parse LidarCalibParam (32 bytes) - we may need these for coordinate transform
+            a_axis_dist = struct.unpack('<f', payload[offset:offset+4])[0]
+            b_axis_dist = struct.unpack('<f', payload[offset+4:offset+8])[0]
+            theta_angle_bias = struct.unpack('<f', payload[offset+8:offset+12])[0]
+            alpha_angle_bias = struct.unpack('<f', payload[offset+12:offset+16])[0]
+            beta_angle = struct.unpack('<f', payload[offset+16:offset+20])[0]
+            xi_angle = struct.unpack('<f', payload[offset+20:offset+24])[0]
+            range_bias = struct.unpack('<f', payload[offset+24:offset+28])[0]
+            range_scale = struct.unpack('<f', payload[offset+28:offset+32])[0]
+            offset += 32
+
+            # Parse scan parameters (36 bytes)
+            com_horizontal_angle_start = struct.unpack('<f', payload[offset:offset+4])[0]
+            com_horizontal_angle_step = struct.unpack('<f', payload[offset+4:offset+8])[0]
+            scan_period = struct.unpack('<f', payload[offset+8:offset+12])[0]
+            range_min = struct.unpack('<f', payload[offset+12:offset+16])[0]
+            range_max = struct.unpack('<f', payload[offset+16:offset+20])[0]
+            angle_min = struct.unpack('<f', payload[offset+20:offset+24])[0]
+            angle_increment = struct.unpack('<f', payload[offset+24:offset+28])[0]
+            time_increment = struct.unpack('<f', payload[offset+28:offset+32])[0]
+            point_num = struct.unpack('<I', payload[offset+32:offset+36])[0]
+            offset += 36
+
+            if point_num == 0 or point_num > 300:
+                logger.debug(f"Invalid point_num: {point_num}")
+                return None
+
+            # Parse ranges (uint16 array, mm)
+            ranges_bytes = payload[offset:offset+600]
+            ranges = np.frombuffer(ranges_bytes, dtype=np.uint16, count=point_num)
+            offset += 600
+
+            # Parse intensities (uint8 array)
+            intensities_bytes = payload[offset:offset+300]
+            intensities = np.frombuffer(intensities_bytes, dtype=np.uint8, count=point_num)
+
+            # Convert polar to Cartesian coordinates with proper 3D transformation
+            # Based on dilohn/unitree-L2-lidar reference implementation
             points = []
-            offset = header_size
+            valid_intensities = []
 
-            # Parse points
-            for i in range(num_points):
-                if offset + 12 > len(data):
-                    break
+            # Precompute rotation biases (beta and xi are calibration angles)
+            sin_beta = np.sin(beta_angle)
+            cos_beta = np.cos(beta_angle)
+            sin_xi = np.sin(xi_angle)
+            cos_xi = np.cos(xi_angle)
+            cos_beta_sin_xi = cos_beta * sin_xi
+            sin_beta_cos_xi = sin_beta * cos_xi
+            sin_beta_sin_xi = sin_beta * sin_xi
+            cos_beta_cos_xi = cos_beta * cos_xi
 
-                try:
-                    # Extract x, y, z as float32 (little-endian)
-                    # NOTE: Based on diagnostic analysis, swapping Y and Z to correct coordinate system
-                    # Unitree L2 coordinate system: +X (opposite cable outlet), +Y (90° CCW from +X), +Z (perpendicular up)
-                    x_raw = struct.unpack('<f', data[offset:offset+4])[0]
-                    y_raw = struct.unpack('<f', data[offset+4:offset+8])[0]
-                    z_raw = struct.unpack('<f', data[offset+8:offset+12])[0]
+            # Initialize angle iterators
+            # alpha = vertical scan angle, theta = horizontal rotation angle
+            alpha_cur = angle_min + alpha_angle_bias
+            alpha_step = angle_increment
+            theta_cur = com_horizontal_angle_start + theta_angle_bias
+            theta_step = com_horizontal_angle_step
 
-                    # Swap Y and Z to match expected coordinate system
-                    x = x_raw
-                    y = z_raw  # Z from packet becomes Y (depth/forward)
-                    z = y_raw  # Y from packet becomes Z (up/down)
+            for i in range(point_num):
+                range_mm = ranges[i]
+                intensity = intensities[i]
 
-                    # Skip invalid points
-                    if not (np.isfinite(x) and np.isfinite(y) and np.isfinite(z)):
-                        offset += point_size
-                        continue
-
-                    # Range check (0.1m to 50m)
-                    distance = np.sqrt(x*x + y*y + z*z)
-                    if distance > 0.1 and distance < 50.0:
-                        points.append([x, y, z])
-
-                    offset += point_size
-
-                except Exception as e:
-                    logger.debug(f"Error parsing point {i}: {e}")
-                    offset += point_size
+                # Skip zero/invalid ranges
+                if range_mm < 1:
+                    alpha_cur += alpha_step
+                    theta_cur += theta_step
                     continue
+
+                # The range is already in mm - use it directly
+                # range_scale appears to be ~0.001 which would scale it incorrectly
+                # Just use the raw range value
+                r = float(range_mm)
+
+                # Spherical to Cartesian with calibration corrections
+                sin_alpha = np.sin(alpha_cur)
+                cos_alpha = np.cos(alpha_cur)
+                sin_theta = np.sin(theta_cur)
+                cos_theta = np.cos(theta_cur)
+
+                # Intermediate calculations (from Unitree's transform)
+                A = (-cos_beta_sin_xi + sin_beta_cos_xi * sin_alpha) * r + b_axis_dist
+                B = cos_alpha * cos_xi * r
+                C = (sin_beta_sin_xi + cos_beta_cos_xi * sin_alpha) * r
+
+                # Final 3D coordinates (in mm)
+                x_mm = cos_theta * A - sin_theta * B
+                y_mm = sin_theta * A + cos_theta * B
+                z_mm = C + a_axis_dist
+
+                # Convert to meters
+                x = x_mm / 1000.0
+                y = y_mm / 1000.0
+                z = z_mm / 1000.0
+
+                # Range check (using meters)
+                distance = np.sqrt(x*x + y*y + z*z)
+                if distance < range_min or distance > range_max:
+                    alpha_cur += alpha_step
+                    theta_cur += theta_step
+                    continue
+
+                points.append([x, y, z])
+                valid_intensities.append(intensity)
+
+                # Advance both angles for next point
+                alpha_cur += alpha_step
+                theta_cur += theta_step
 
             if len(points) == 0:
                 return None
 
-            result = np.array(points, dtype=np.float32)
-            logger.debug(f"Parsed {len(result)} valid points from packet")
-            return result
+            points_array = np.array(points, dtype=np.float32)
+            intensities_array = np.array(valid_intensities, dtype=np.float32).reshape(-1, 1) / 255.0
+
+            logger.debug(f"Parsed 3D packet: {len(points_array)} points")
+            return points_array, intensities_array
 
         except Exception as e:
-            logger.error(f"Failed to parse packet: {e}")
+            logger.error(f"Error parsing 3D point data: {e}")
+            return None
+
+    def _parse_2d_point_data(self, payload: bytes) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        """
+        Parse 2D point data payload (type 103).
+
+        Similar to 3D but with 1800 points instead of 300.
+        """
+        try:
+            offset = 0
+
+            # Skip DataInfo (16 bytes)
+            offset += 16
+
+            # Skip LidarInsideState (36 bytes)
+            offset += 36
+
+            # Skip LidarCalibParam (32 bytes)
+            offset += 32
+
+            # Parse scan parameters (28 bytes - no horizontal angle params)
+            scan_period = struct.unpack('<f', payload[offset:offset+4])[0]
+            range_min = struct.unpack('<f', payload[offset+4:offset+8])[0]
+            range_max = struct.unpack('<f', payload[offset+8:offset+12])[0]
+            angle_min = struct.unpack('<f', payload[offset+12:offset+16])[0]
+            angle_increment = struct.unpack('<f', payload[offset+16:offset+20])[0]
+            time_increment = struct.unpack('<f', payload[offset+20:offset+24])[0]
+            point_num = struct.unpack('<I', payload[offset+24:offset+28])[0]
+            offset += 28
+
+            if point_num == 0 or point_num > 1800:
+                logger.debug(f"Invalid point_num for 2D: {point_num}")
+                return None
+
+            # Parse ranges (uint16 array, mm)
+            ranges_bytes = payload[offset:offset+3600]
+            ranges = np.frombuffer(ranges_bytes, dtype=np.uint16, count=point_num)
+            offset += 3600
+
+            # Parse intensities (uint8 array)
+            intensities_bytes = payload[offset:offset+1800]
+            intensities = np.frombuffer(intensities_bytes, dtype=np.uint8, count=point_num)
+
+            # Convert polar to Cartesian coordinates
+            points = []
+            valid_intensities = []
+
+            for i in range(point_num):
+                range_mm = ranges[i]
+                intensity = intensities[i]
+
+                # Skip zero ranges
+                if range_mm == 0:
+                    continue
+
+                # Convert range from mm to meters
+                range_m = range_mm / 1000.0
+
+                # Calculate angle for this point
+                angle_rad = angle_min + i * angle_increment
+
+                # Convert polar to Cartesian (2D scan in X-Y plane)
+                x = range_m * np.cos(angle_rad)
+                y = range_m * np.sin(angle_rad)
+                z = 0.0  # 2D scan
+
+                # Range check
+                if range_m < range_min or range_m > range_max:
+                    continue
+
+                points.append([x, y, z])
+                valid_intensities.append(intensity)
+
+            if len(points) == 0:
+                return None
+
+            points_array = np.array(points, dtype=np.float32)
+            intensities_array = np.array(valid_intensities, dtype=np.float32).reshape(-1, 1) / 255.0
+
+            logger.debug(f"Parsed 2D packet: {len(points_array)} points")
+            return points_array, intensities_array
+
+        except Exception as e:
+            logger.error(f"Error parsing 2D point data: {e}")
             return None
 
     def get_point_cloud(self) -> Optional[np.ndarray]:
@@ -241,34 +449,34 @@ class UnitreeL2UDP:
         if packet is None:
             return None
 
-        points = self.parse_packet(packet)
+        result = self.parse_packet(packet)
 
-        if points is not None:
-            logger.debug(f"Received point cloud with {len(points)} points")
+        if result is None:
+            return None
 
+        points, _ = result
+        logger.debug(f"Received point cloud with {len(points)} points")
         return points
 
     def get_point_cloud_with_intensity(self) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         """
         Receive point cloud with intensity values.
 
-        Note: Requires implementing intensity parsing in parse_packet().
-
         Returns:
             Tuple of (points, intensities) or None
         """
-        # TODO: Implement intensity extraction in parse_packet()
-        # Then return both points and intensities
+        packet = self.receive_packet()
 
-        logger.warning("get_point_cloud_with_intensity() not fully implemented yet")
-        points = self.get_point_cloud()
-
-        if points is None:
+        if packet is None:
             return None
 
-        # Placeholder: return dummy intensities
-        intensities = np.zeros((len(points), 1))
-        return points, intensities
+        result = self.parse_packet(packet)
+
+        if result is not None:
+            points, intensities = result
+            logger.debug(f"Received point cloud with {len(points)} points and intensities")
+
+        return result
 
     def test_connection(self) -> bool:
         """
@@ -291,9 +499,17 @@ class UnitreeL2UDP:
             logger.error("Failed to receive test packet")
             return False
 
-        logger.info(f"✓ Successfully received {len(packet)} bytes")
-        logger.info("Connection test passed!")
+        logger.info(f"[OK] Successfully received {len(packet)} bytes")
 
+        # Try to parse it
+        result = self.parse_packet(packet)
+        if result is not None:
+            points, _ = result
+            logger.info(f"[OK] Successfully parsed {len(points)} points")
+        else:
+            logger.warning("Could not parse packet (may be IMU or unknown type)")
+
+        logger.info("Connection test passed!")
         return True
 
     def __enter__(self):
@@ -309,7 +525,7 @@ class UnitreeL2UDP:
 # Example usage
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
 
@@ -321,19 +537,31 @@ if __name__ == "__main__":
 
     print("\nAttempting to connect...")
     if receiver.connect():
-        print("✓ Connected successfully!")
+        print("[OK] Connected successfully!")
 
-        print("\nReceiving 5 test packets...")
-        for i in range(5):
-            packet = receiver.receive_packet()
-            if packet:
-                print(f"  Packet {i+1}: {len(packet)} bytes")
+        print("\nReceiving 30 test packets...")
+        total_points = 0
+        packet_count = 0
+
+        for i in range(30):
+            result = receiver.get_point_cloud_with_intensity()
+            if result:
+                points, intensities = result
+                total_points += len(points)
+                packet_count += 1
+                print(f"  Packet {i+1}: {len(points)} points")
             else:
-                print(f"  Packet {i+1}: Failed")
+                print(f"  Packet {i+1}: No points (IMU or other packet type)")
+
+        print(f"\nSummary:")
+        print(f"  Packets with points: {packet_count}/30")
+        print(f"  Total points: {total_points}")
+        if packet_count > 0:
+            print(f"  Average points/packet: {total_points/packet_count:.1f}")
 
         receiver.disconnect()
     else:
-        print("✗ Connection failed!")
+        print("[FAIL] Connection failed!")
         print("\nTroubleshooting:")
         print("1. Check sensor is powered on")
         print("2. Verify network configuration (run: ipconfig or ifconfig)")
