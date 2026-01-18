@@ -78,4 +78,6 @@ Thumbs.db
 htmlcov/
 
 # Documentation builds
-docs/_build/
+docs/_build/data/imu_slam/
+data/slam/
+data/trails/

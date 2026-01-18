@@ -199,8 +199,7 @@ class UnitreeL2UDP:
             elif packet_type == LIDAR_2D_POINT_DATA_PACKET_TYPE:
                 return self._parse_2d_point_data(data[12:tail_offset])
             elif packet_type == LIDAR_IMU_DATA_PACKET_TYPE:
-                logger.debug("Received IMU packet (skipping)")
-                return None
+                return self._parse_imu_data(data[12:tail_offset])
             else:
                 logger.debug(f"Unknown packet type: {packet_type}")
                 return None
@@ -437,6 +436,49 @@ class UnitreeL2UDP:
             logger.error(f"Error parsing 2D point data: {e}")
             return None
 
+    def _parse_imu_data(self, payload: bytes) -> Optional[dict]:
+        """
+        Parse IMU data payload (type 104).
+
+        Returns quaternion orientation and angular velocity.
+        Structure based on Unitree protocol.
+        """
+        try:
+            if len(payload) < 64:  # Minimum expected size
+                return None
+
+            offset = 0
+
+            # Parse quaternion (orientation) - 4 floats
+            qw = struct.unpack('<f', payload[offset:offset+4])[0]
+            qx = struct.unpack('<f', payload[offset+4:offset+8])[0]
+            qy = struct.unpack('<f', payload[offset+8:offset+12])[0]
+            qz = struct.unpack('<f', payload[offset+12:offset+16])[0]
+            offset += 16
+
+            # Parse angular velocity - 3 floats (rad/s)
+            gyro_x = struct.unpack('<f', payload[offset:offset+4])[0]
+            gyro_y = struct.unpack('<f', payload[offset+4:offset+8])[0]
+            gyro_z = struct.unpack('<f', payload[offset+8:offset+12])[0]
+            offset += 12
+
+            # Parse linear acceleration - 3 floats (m/s^2)
+            accel_x = struct.unpack('<f', payload[offset:offset+4])[0]
+            accel_y = struct.unpack('<f', payload[offset+4:offset+8])[0]
+            accel_z = struct.unpack('<f', payload[offset+8:offset+12])[0]
+
+            imu_data = {
+                'quaternion': np.array([qw, qx, qy, qz]),
+                'angular_velocity': np.array([gyro_x, gyro_y, gyro_z]),
+                'linear_acceleration': np.array([accel_x, accel_y, accel_z])
+            }
+
+            return imu_data
+
+        except Exception as e:
+            logger.error(f"Error parsing IMU data: {e}")
+            return None
+
     def get_point_cloud(self) -> Optional[np.ndarray]:
         """
         Receive and parse a single frame of point cloud data.
@@ -463,7 +505,7 @@ class UnitreeL2UDP:
         Receive point cloud with intensity values.
 
         Returns:
-            Tuple of (points, intensities) or None
+            Tuple of (points, intensities), dict (IMU data), or None
         """
         packet = self.receive_packet()
 
@@ -472,7 +514,8 @@ class UnitreeL2UDP:
 
         result = self.parse_packet(packet)
 
-        if result is not None:
+        # Only try to unpack if it's a tuple (point cloud), not dict (IMU)
+        if result is not None and isinstance(result, tuple):
             points, intensities = result
             logger.debug(f"Received point cloud with {len(points)} points and intensities")
 

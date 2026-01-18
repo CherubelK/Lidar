@@ -1,0 +1,19 @@
+{
+  "room_name": "imu_room",
+  "scan_date": "2026-01-17T21:07:43.271131",
+  "scan_duration_seconds": 30,
+  "total_points": 1719690,
+  "processed_points": 101530,
+  "mesh_vertices": 101530,
+  "mesh_faces": 16749,
+  "imu_enabled": true,
+  "imu_updates": 319,
+  "coordinate_range": {
+    "x_min": -7.656097250937261,
+    "x_max": 5.641312122344971,
+    "y_min": -4.489591121673584,
+    "y_max": 5.361267400938887,
+    "z_min": -0.13222020864486694,
+    "z_max": 5.583642959594727
+  }
+}
