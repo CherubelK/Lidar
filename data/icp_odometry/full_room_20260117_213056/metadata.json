@@ -1,0 +1,24 @@
+{
+  "room_name": "full_room",
+  "scan_date": "2026-01-17T21:32:01.123657",
+  "scan_duration_seconds": 60,
+  "method": "icp_odometry",
+  "scans_captured": 12225,
+  "scans_processed": 129,
+  "successful_registrations": 129,
+  "failed_registrations": 69,
+  "success_rate": 0.6515151515151515,
+  "total_points": 36573,
+  "processed_points": 36573,
+  "mesh_vertices": 36573,
+  "mesh_faces": 41317,
+  "estimated_path_length_m": 78.96773859988181,
+  "coordinate_range": {
+    "x_min": -5.258922110405157,
+    "x_max": 7.28342977627716,
+    "y_min": -4.1868166432721035,
+    "y_max": 6.291863769416992,
+    "z_min": -2.3677274517131366,
+    "z_max": 9.271316694920282
+  }
+}

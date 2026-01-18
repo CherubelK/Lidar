@@ -1,0 +1,24 @@
+{
+  "room_name": "icp_room",
+  "scan_date": "2026-01-17T21:20:17.164417",
+  "scan_duration_seconds": 20,
+  "method": "icp_odometry",
+  "scans_captured": 4073,
+  "scans_processed": 39,
+  "successful_registrations": 39,
+  "failed_registrations": 0,
+  "success_rate": 1.0,
+  "total_points": 10758,
+  "processed_points": 10758,
+  "mesh_vertices": 10758,
+  "mesh_faces": 16564,
+  "estimated_path_length_m": 11.410031206032686,
+  "coordinate_range": {
+    "x_min": -5.772205662250615,
+    "x_max": 6.870178521594781,
+    "y_min": -1.1782300273126087,
+    "y_max": 0.5519690445812369,
+    "z_min": -0.43775126524910035,
+    "z_max": 2.2977060435483243
+  }
+}

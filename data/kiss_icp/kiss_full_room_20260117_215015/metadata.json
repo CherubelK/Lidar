@@ -1,0 +1,21 @@
+{
+  "room_name": "kiss_full_room",
+  "scan_date": "2026-01-17T21:51:24.961129",
+  "scan_duration_seconds": 60,
+  "method": "kiss_icp_slam",
+  "scans_captured": 12217,
+  "scans_processed": 297,
+  "total_points": 85259,
+  "processed_points": 74818,
+  "mesh_vertices": 74818,
+  "mesh_faces": 63742,
+  "estimated_path_length_m": 1074.4516043127064,
+  "coordinate_range": {
+    "x_min": -19.406686079413443,
+    "x_max": 182.78926783277228,
+    "y_min": -40.59632563827113,
+    "y_max": 26.84196937181001,
+    "z_min": -7.048825850280856,
+    "z_max": 31.645241789692534
+  }
+}
