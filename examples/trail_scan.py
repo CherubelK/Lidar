@@ -110,7 +110,12 @@ if len(all_points) == 0:
 
 # Merge all points
 merged_points = np.vstack(all_points)
-merged_intensities = np.hstack(all_intensities)
+# Only stack intensities if they're consistent, otherwise skip
+try:
+    merged_intensities = np.hstack(all_intensities)
+except ValueError:
+    # Intensity arrays have inconsistent sizes - skip intensity data for now
+    merged_intensities = None
 total_points = len(merged_points)
 
 print()
@@ -144,7 +149,8 @@ downsample_factor = max(1, total_points // target_points)
 if downsample_factor > 1:
     print(f"      Downsampling by factor of {downsample_factor}...")
     merged_points = merged_points[::downsample_factor]
-    merged_intensities = merged_intensities[::downsample_factor]
+    if merged_intensities is not None:
+        merged_intensities = merged_intensities[::downsample_factor]
     print(f"      Points after downsampling: {len(merged_points):,}")
     print()
 
