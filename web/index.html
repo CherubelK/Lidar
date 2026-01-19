@@ -3,170 +3,806 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Trail Map Viewer - Unitree L2 LiDAR</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>Unitree L2 LiDAR - Trail Mapping System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Navigation */
+        nav {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 0 2rem;
+        }
+
+        .nav-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .logo-text span {
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 8px;
+        }
+
+        .nav-link {
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+            background: var(--primary);
+        }
+
+        .nav-link.btn-viewer {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .nav-link.btn-viewer:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 140px 2rem 80px;
+            text-align: center;
+            background: linear-gradient(180deg, var(--bg-dark) 0%, #1a1f35 100%);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 15px;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+            border-color: var(--primary);
+        }
+
+        /* Status Cards */
+        .status-section {
+            padding: 4rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .status-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .status-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+        }
+
+        .status-card h3 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .status-card .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .badge-success {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        /* Section Headers */
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-header h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+        }
+
+        /* Features Grid */
+        .features-section {
+            padding: 4rem 2rem;
+            background: var(--bg-card);
+        }
+
+        .features-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            padding: 2rem;
+            background: var(--bg-dark);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        /* Documentation Section */
+        .docs-section {
+            padding: 4rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .docs-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .docs-nav {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            position: sticky;
+            top: 90px;
+            height: fit-content;
+            max-height: calc(100vh - 110px);
+            overflow-y: auto;
+        }
+
+        .docs-nav h3 {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .docs-nav ul {
+            list-style: none;
+        }
+
+        .docs-nav li {
+            margin-bottom: 4px;
+        }
+
+        .docs-nav a {
+            display: block;
+            padding: 10px 14px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .docs-nav a:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .docs-nav a.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .docs-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            min-height: 500px;
+        }
+
+        .docs-content h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .docs-content h2 {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .docs-content h3 {
+            font-size: 1.25rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .docs-content p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .docs-content ul, .docs-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .docs-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .docs-content code {
+            background: var(--bg-dark);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+            color: var(--accent);
+        }
+
+        .docs-content pre {
+            background: var(--bg-dark);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .docs-content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .docs-content a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .docs-content a:hover {
+            text-decoration: underline;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            padding: 4rem 2rem;
+            background: linear-gradient(180deg, var(--bg-dark) 0%, #1a1f35 100%);
+        }
+
+        .actions-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .action-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s;
+            display: block;
+        }
+
+        .action-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .action-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        footer p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .docs-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .docs-nav {
+                position: static;
+                max-height: none;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-    <div id="app">
-        <!-- Header -->
-        <header>
-            <div class="container">
-                <h1>🗺️ 3D Trail Map Viewer</h1>
-                <p>Unitree L2 LiDAR Trail Mapping System</p>
+    <nav>
+        <div class="nav-content">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">L2</div>
+                <div class="logo-text">LiDAR <span>Trail Mapper</span></div>
+            </a>
+            <div class="nav-links">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#docs" class="nav-link">Documentation</a>
+                <a href="viewer.html" class="nav-link btn-viewer">&#x1F4F7; 3D Viewer</a>
+                <a href="https://github.com/CherubelK/Lidar" class="nav-link" target="_blank">GitHub</a>
             </div>
-        </header>
+        </div>
+    </nav>
 
-        <!-- Main Content -->
-        <main>
-            <!-- 3D Viewer -->
-            <div id="viewer-container">
-                <canvas id="canvas3d"></canvas>
+    <section class="hero">
+        <h1>LiDAR Trail Mapping</h1>
+        <p>A complete SLAM system for capturing, processing, and visualizing 3D environments using the Unitree L2 LiDAR sensor.</p>
+        <div class="hero-buttons">
+            <a href="viewer.html" class="btn btn-primary">
+                <span>&#x1F4F7;</span> Open 3D Viewer
+            </a>
+            <a href="#docs" class="btn btn-secondary">
+                <span>&#x1F4DA;</span> Read Documentation
+            </a>
+        </div>
+    </section>
 
-                <!-- Loading Indicator -->
-                <div id="loading">
+    <section class="status-section">
+        <div class="status-grid">
+            <div class="status-card">
+                <h3>&#x2705; Project Phase</h3>
+                <div class="value">1.6</div>
+                <span class="badge badge-success">SLAM Complete</span>
+            </div>
+            <div class="status-card">
+                <h3>&#x1F4CA; Available Scans</h3>
+                <div class="value" id="scan-count">-</div>
+                <span class="badge badge-success">Ready to view</span>
+            </div>
+            <div class="status-card">
+                <h3>&#x1F916; SLAM Components</h3>
+                <div class="value">5</div>
+                <span class="badge badge-success">All Active</span>
+            </div>
+            <div class="status-card">
+                <h3>&#x1F4C4; Documentation</h3>
+                <div class="value" id="docs-count">-</div>
+                <span class="badge badge-success">Available</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-section" id="features">
+        <div class="section-header">
+            <h2>System Features</h2>
+            <p>Professional-grade SLAM capabilities for 3D mapping</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4E1;</div>
+                <h3>KISS-ICP Odometry</h3>
+                <p>Frame-to-frame point cloud matching for accurate trajectory estimation with adaptive thresholds.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F333;</div>
+                <h3>ikd-Tree Map Storage</h3>
+                <p>Incremental k-d tree for O(log n) point queries and efficient map management.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F501;</div>
+                <h3>Loop Closure Detection</h3>
+                <p>Scan Context descriptors for robust place recognition and drift correction.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F4C8;</div>
+                <h3>Pose Graph Optimization</h3>
+                <p>Gauss-Newton solver for global trajectory optimization after loop closures.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F3C3;</div>
+                <h3>IMU Integration</h3>
+                <p>Point cloud deskewing and motion prediction for handheld scanning (ORB-SLAM3 inspired).</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#x1F310;</div>
+                <h3>Web 3D Viewer</h3>
+                <p>Interactive Three.js-based visualization with multiple view modes and export options.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="docs-section" id="docs">
+        <div class="section-header">
+            <h2>Documentation</h2>
+            <p>Learn how to use the LiDAR mapping system</p>
+        </div>
+        <div class="docs-grid">
+            <div class="docs-nav">
+                <h3>Getting Started</h3>
+                <ul id="docs-list">
+                    <li><a href="#" data-doc="README.md" class="active">Overview</a></li>
+                    <li><a href="#" data-doc="GETTING_STARTED.md">Getting Started</a></li>
+                    <li><a href="#" data-doc="PROGRESS.md">Progress</a></li>
+                </ul>
+                <h3>Technical Guides</h3>
+                <ul id="guides-list">
+                    <li><a href="#" data-doc="docs/COMPLETE_SLAM.md">Complete SLAM</a></li>
+                    <li><a href="#" data-doc="docs/UNITREE_L2_INTEGRATION.md">Unitree L2 Integration</a></li>
+                    <li><a href="#" data-doc="docs/SYSTEM_INTEGRATION.md">System Integration</a></li>
+                    <li><a href="#" data-doc="docs/QUICK_REFERENCE.md">Quick Reference</a></li>
+                    <li><a href="#" data-doc="docs/MULTI_DEVICE_MESH.md">Multi-Device Mesh</a></li>
+                    <li><a href="#" data-doc="docs/WHY_GPS_FAILS_INDOORS.md">GPS Indoor Issues</a></li>
+                </ul>
+                <h3>Examples & Tutorials</h3>
+                <ul id="examples-list">
+                    <li><a href="#" data-doc="examples/README_SCANNING.md">Scanning Guide</a></li>
+                    <li><a href="#" data-doc="examples/README_KISS_ICP.md">KISS-ICP Guide</a></li>
+                    <li><a href="#" data-doc="examples/README_ICP_ODOMETRY.md">ICP Odometry</a></li>
+                    <li><a href="#" data-doc="examples/README_GPS_SETUP.md">GPS Setup</a></li>
+                    <li><a href="#" data-doc="examples/README_MULTI_DEVICE.md">Multi-Device</a></li>
+                    <li><a href="#" data-doc="examples/README_POSITIONING_OPTIONS.md">Positioning Options</a></li>
+                </ul>
+            </div>
+            <div class="docs-content" id="docs-content">
+                <div class="loading">
                     <div class="spinner"></div>
-                    <p>Loading 3D trail map...</p>
-                </div>
-
-                <!-- Controls Overlay -->
-                <div id="controls-overlay">
-                    <div class="control-panel">
-                        <h3>Controls</h3>
-                        <ul>
-                            <li><strong>Rotate:</strong> Left click + drag</li>
-                            <li><strong>Pan:</strong> Right click + drag</li>
-                            <li><strong>Zoom:</strong> Scroll wheel</li>
-                            <li><strong>Reset:</strong> Double click</li>
-                        </ul>
-                    </div>
+                    <span>Loading documentation...</span>
                 </div>
             </div>
+        </div>
+    </section>
 
-            <!-- Sidebar -->
-            <aside id="sidebar">
-                <div class="panel">
-                    <h2>Trail Information</h2>
-                    <div id="trail-info">
-                        <div class="info-item">
-                            <label>Trail Name:</label>
-                            <span id="trail-name">Loading...</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Scan Date:</label>
-                            <span id="scan-date">-</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Total Points:</label>
-                            <span id="total-points">-</span>
-                        </div>
-                        <div class="info-item">
-                            <label>Mesh Faces:</label>
-                            <span id="mesh-faces">-</span>
-                        </div>
-                    </div>
-                </div>
+    <section class="quick-actions">
+        <div class="section-header">
+            <h2>Quick Actions</h2>
+            <p>Jump to common tasks</p>
+        </div>
+        <div class="actions-grid">
+            <a href="viewer.html" class="action-card">
+                <h3>&#x1F4F7; View 3D Scans</h3>
+                <p>Open the interactive 3D viewer to explore captured point clouds and meshes.</p>
+            </a>
+            <a href="#" class="action-card" onclick="loadDoc('examples/README_SCANNING.md'); return false;">
+                <h3>&#x1F4F1; Start Scanning</h3>
+                <p>Learn how to capture LiDAR data with handheld or mounted configurations.</p>
+            </a>
+            <a href="#" class="action-card" onclick="loadDoc('docs/COMPLETE_SLAM.md'); return false;">
+                <h3>&#x1F504; Run SLAM</h3>
+                <p>Process scans with the complete SLAM pipeline including loop closure.</p>
+            </a>
+            <a href="https://github.com/CherubelK/Lidar" class="action-card" target="_blank">
+                <h3>&#x1F4BB; View Source</h3>
+                <p>Browse the source code and contribute on GitHub.</p>
+            </a>
+        </div>
+    </section>
 
-                <div class="panel">
-                    <h2>Visualization Options</h2>
+    <footer>
+        <p>&copy; 2026 Unitree L2 LiDAR Trail Mapping Project</p>
+        <p>Powered by <a href="https://threejs.org" target="_blank">Three.js</a> |
+           <a href="https://github.com/CherubelK/Lidar" target="_blank">GitHub</a></p>
+    </footer>
 
-                    <div class="option-group">
-                        <label for="model-select">Select Trail:</label>
-                        <select id="model-select">
-                            <option value="">-- Select a trail --</option>
-                        </select>
-                    </div>
+    <script>
+        // Load scan count
+        fetch('models/')
+            .then(r => r.text())
+            .then(html => {
+                const matches = html.match(/\.json/g);
+                const count = matches ? matches.length : 0;
+                document.getElementById('scan-count').textContent = count;
+            })
+            .catch(() => {
+                document.getElementById('scan-count').textContent = '0';
+            });
 
-                    <div class="option-group">
-                        <label for="display-mode">Display Mode:</label>
-                        <select id="display-mode">
-                            <option value="solid">Solid</option>
-                            <option value="wireframe">Wireframe</option>
-                            <option value="points">Point Cloud</option>
-                        </select>
-                    </div>
+        // Count docs
+        const docsCount = document.querySelectorAll('.docs-nav a[data-doc]').length;
+        document.getElementById('docs-count').textContent = docsCount;
 
-                    <div class="option-group">
-                        <label for="color-mode">Color Mode:</label>
-                        <select id="color-mode">
-                            <option value="height">Height (Elevation)</option>
-                            <option value="solid">Solid Color</option>
-                            <option value="normal">Surface Normals</option>
-                        </select>
-                    </div>
+        // Documentation loader
+        async function loadDoc(docPath) {
+            const content = document.getElementById('docs-content');
+            content.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading...</span></div>';
 
-                    <div class="option-group">
-                        <label>
-                            <input type="checkbox" id="show-grid" checked>
-                            Show Grid
-                        </label>
-                    </div>
+            // Update active nav
+            document.querySelectorAll('.docs-nav a').forEach(a => a.classList.remove('active'));
+            const activeLink = document.querySelector(`[data-doc="${docPath}"]`);
+            if (activeLink) activeLink.classList.add('active');
 
-                    <div class="option-group">
-                        <label>
-                            <input type="checkbox" id="show-axes" checked>
-                            Show Axes
-                        </label>
-                    </div>
+            try {
+                // Try fetching from project root (when served by updated server)
+                let response = await fetch('/' + docPath);
+                if (!response.ok) {
+                    // Fallback to relative path
+                    response = await fetch('../' + docPath);
+                }
+                if (!response.ok) throw new Error('Doc not found');
+                const markdown = await response.text();
+                content.innerHTML = marked.parse(markdown);
 
-                    <div class="option-group">
-                        <label>
-                            <input type="checkbox" id="auto-rotate">
-                            Auto Rotate
-                        </label>
-                    </div>
-                </div>
+                // Scroll to docs section
+                document.getElementById('docs').scrollIntoView({ behavior: 'smooth' });
+            } catch (e) {
+                content.innerHTML = `
+                    <h1>Document Not Found</h1>
+                    <p>Could not load: ${docPath}</p>
+                    <p>Make sure the server is running: <code>python web/server.py</code></p>
+                `;
+            }
+        }
 
-                <div class="panel">
-                    <h2>Camera Presets</h2>
-                    <div class="button-group">
-                        <button onclick="setCameraView('top')">Top View</button>
-                        <button onclick="setCameraView('side')">Side View</button>
-                        <button onclick="setCameraView('front')">Front View</button>
-                        <button onclick="setCameraView('perspective')">Perspective</button>
-                    </div>
-                </div>
+        // Add click handlers to doc links
+        document.querySelectorAll('.docs-nav a[data-doc]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                loadDoc(link.dataset.doc);
+            });
+        });
 
-                <div class="panel">
-                    <h2>Export</h2>
-                    <div class="button-group">
-                        <button onclick="takeScreenshot()">📷 Screenshot</button>
-                        <button onclick="exportData()">💾 Export Data</button>
-                    </div>
-                </div>
+        // Load initial doc
+        loadDoc('README.md');
 
-                <div class="panel stats-panel">
-                    <h2>Statistics</h2>
-                    <div id="stats">
-                        <div class="stat-item">
-                            <label>FPS:</label>
-                            <span id="fps">-</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Camera Position:</label>
-                            <span id="cam-pos">-</span>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-        </main>
-
-        <!-- Footer -->
-        <footer>
-            <div class="container">
-                <p>&copy; 2026 Unitree L2 LiDAR Trail Mapping Project</p>
-                <p>Powered by Three.js</p>
-            </div>
-        </footer>
-    </div>
-
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <!-- OrbitControls -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
-    <!-- Custom Scripts -->
-    <script src="js/viewer.js?v=4"></script>
-    <script src="js/app.js?v=4"></script>
+        // Smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
 </body>
 </html>

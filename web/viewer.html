@@ -3,8 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unitree L2 LiDAR 3D Viewer</title>
+    <title>3D Scan Viewer - LiDAR Trail Mapper</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --success: #22c55e;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,216 +29,299 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
             overflow: hidden;
-            color: #333;
+            height: 100vh;
         }
 
-        #container {
-            width: 100vw;
-            height: 100vh;
+        #app {
             display: flex;
             flex-direction: column;
+            height: 100vh;
         }
 
         /* Header */
         header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 15px 30px;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 1.5rem;
+            height: 60px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
             z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
         }
 
         .logo {
             display: flex;
             align-items: center;
-            gap: 12px;
-        }
-
-        .logo h1 {
-            font-size: 24px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text-primary);
         }
 
         .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 20px;
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        select, button {
-            padding: 10px 20px;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: white;
-            color: #667eea;
-        }
-
-        select:hover, button:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-        }
-
-        select:focus, button:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        }
-
-        button.active {
-            background: #667eea;
-            color: white;
-        }
-
-        /* Main viewer area */
-        #viewer-container {
-            flex: 1;
-            position: relative;
-            background: #1a1a2e;
-        }
-
-        #canvas-container {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Stats panel */
-        #stats {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            min-width: 250px;
+            font-weight: 700;
             font-size: 14px;
         }
 
-        #stats h3 {
-            margin-bottom: 12px;
-            color: #667eea;
-            font-size: 16px;
+        .logo-text {
+            font-size: 18px;
             font-weight: 600;
         }
 
-        .stat-row {
+        .scan-selector {
             display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+            gap: 10px;
         }
 
-        .stat-row:last-child {
+        .scan-selector label {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        select {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 14px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            min-width: 200px;
+            transition: all 0.2s;
+        }
+
+        select:hover {
+            border-color: var(--primary);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 13px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--primary);
+        }
+
+        .btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .btn-icon {
+            padding: 8px;
+        }
+
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        /* 3D Viewer */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(180deg, #0a0f1a 0%, #111827 100%);
+        }
+
+        /* Side Panel */
+        .side-panel {
+            width: 280px;
+            background: var(--bg-card);
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .panel-section {
+            background: var(--bg-dark);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .panel-section h3 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat-item:last-child {
             border-bottom: none;
         }
 
         .stat-label {
-            color: #666;
-            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 13px;
         }
 
         .stat-value {
-            color: #333;
+            color: var(--text-primary);
             font-weight: 600;
+            font-size: 13px;
         }
 
-        /* View mode panel */
-        #view-modes {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        /* View Mode Buttons */
+        .view-modes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
         }
 
-        #view-modes h3 {
-            margin-bottom: 12px;
-            color: #667eea;
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .view-button {
-            width: 100%;
-            margin: 8px 0;
-            padding: 12px;
-            background: white;
-            border: 2px solid #e0e0e0;
+        .view-btn {
+            padding: 10px;
             border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
             font-weight: 500;
-            color: #666;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
         }
 
-        .view-button:hover {
-            border-color: #667eea;
-            color: #667eea;
-            transform: translateX(5px);
+        .view-btn:hover {
+            border-color: var(--primary);
+            color: var(--text-primary);
         }
 
-        .view-button.active {
-            background: #667eea;
-            border-color: #667eea;
+        .view-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
             color: white;
         }
 
-        /* Loading overlay */
+        /* Camera Presets */
+        .camera-presets {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+
+        .preset-btn {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--primary);
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        /* Loading Overlay */
         #loading {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(26, 26, 46, 0.95);
+            background: rgba(15, 23, 42, 0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            color: white;
         }
 
         .spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top-color: #667eea;
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 20px;
         }
 
         @keyframes spin {
@@ -229,123 +329,216 @@
         }
 
         #loading-text {
-            font-size: 18px;
+            margin-top: 1.5rem;
+            font-size: 16px;
             font-weight: 500;
-            margin-top: 10px;
         }
 
         #loading-detail {
-            font-size: 14px;
-            color: #aaa;
-            margin-top: 5px;
+            margin-top: 0.5rem;
+            font-size: 13px;
+            color: var(--text-secondary);
         }
 
         .hidden {
             display: none !important;
         }
 
-        /* Instructions */
-        #instructions {
+        /* Instructions Bar */
+        .instructions {
             position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(30, 41, 59, 0.95);
             backdrop-filter: blur(10px);
-            padding: 15px 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
             display: flex;
-            gap: 30px;
-            font-size: 13px;
+            gap: 20px;
+            font-size: 12px;
         }
 
         .instruction {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            color: var(--text-secondary);
         }
 
         .instruction-key {
-            background: #667eea;
+            background: var(--primary);
             color: white;
-            padding: 4px 10px;
-            border-radius: 6px;
+            padding: 3px 8px;
+            border-radius: 4px;
             font-weight: 600;
-            font-size: 12px;
+            font-size: 11px;
         }
 
-        .instruction-text {
-            color: #666;
+        /* Responsive */
+        @media (max-width: 900px) {
+            .side-panel {
+                position: absolute;
+                right: -280px;
+                top: 0;
+                bottom: 0;
+                transition: right 0.3s;
+                z-index: 50;
+            }
+
+            .side-panel.open {
+                right: 0;
+            }
+        }
+
+        /* Color settings */
+        .color-settings {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .color-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-option input[type="range"] {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border);
+            -webkit-appearance: none;
+        }
+
+        .color-option input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        .color-option label {
+            min-width: 80px;
+            font-size: 12px;
+            color: var(--text-secondary);
         }
     </style>
 </head>
 <body>
-    <div id="container">
+    <div id="app">
         <header>
-            <div class="logo">
-                <div class="logo-icon">L2</div>
-                <h1>Unitree L2 LiDAR 3D Viewer</h1>
+            <div class="header-left">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">L2</div>
+                    <div class="logo-text">3D Viewer</div>
+                </a>
+                <div class="scan-selector">
+                    <label>Scan:</label>
+                    <select id="scan-select">
+                        <option value="">Loading scans...</option>
+                    </select>
+                </div>
             </div>
-            <div class="controls">
-                <select id="scan-select">
-                    <option value="">Select a scan...</option>
-                </select>
-                <button id="reset-view">Reset View</button>
-                <button id="auto-rotate" data-active="false">Auto Rotate</button>
+            <div class="header-right">
+                <button class="btn" id="reset-view" title="Reset camera view">
+                    <span>&#x21BA;</span> Reset
+                </button>
+                <button class="btn" id="auto-rotate" title="Toggle auto-rotation">
+                    <span>&#x27F3;</span> Rotate
+                </button>
+                <button class="btn" id="screenshot" title="Take screenshot">
+                    <span>&#x1F4F7;</span>
+                </button>
+                <a href="index.html" class="nav-link">&#x1F3E0; Home</a>
+                <a href="index.html#docs" class="nav-link">&#x1F4DA; Docs</a>
             </div>
         </header>
 
-        <div id="viewer-container">
-            <div id="canvas-container"></div>
+        <div class="main-content">
+            <div id="canvas-container">
+                <div id="loading">
+                    <div class="spinner"></div>
+                    <div id="loading-text">Initializing 3D viewer...</div>
+                    <div id="loading-detail"></div>
+                </div>
 
-            <div id="stats">
-                <h3>Scan Statistics</h3>
-                <div class="stat-row">
-                    <span class="stat-label">Vertices:</span>
-                    <span class="stat-value" id="stat-vertices">-</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Faces:</span>
-                    <span class="stat-value" id="stat-faces">-</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Dimensions:</span>
-                    <span class="stat-value" id="stat-dimensions">-</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Scan Name:</span>
-                    <span class="stat-value" id="stat-name">-</span>
+                <div class="instructions">
+                    <div class="instruction">
+                        <span class="instruction-key">Left Drag</span>
+                        <span>Rotate</span>
+                    </div>
+                    <div class="instruction">
+                        <span class="instruction-key">Right Drag</span>
+                        <span>Pan</span>
+                    </div>
+                    <div class="instruction">
+                        <span class="instruction-key">Scroll</span>
+                        <span>Zoom</span>
+                    </div>
                 </div>
             </div>
 
-            <div id="view-modes">
-                <h3>View Mode</h3>
-                <button class="view-button active" data-mode="solid">Solid Surface</button>
-                <button class="view-button" data-mode="wireframe">Wireframe</button>
-                <button class="view-button" data-mode="points">Point Cloud</button>
-                <button class="view-button" data-mode="transparent">Transparent</button>
-            </div>
+            <div class="side-panel">
+                <div class="panel-section">
+                    <h3>&#x1F4CA; Statistics</h3>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Points</span>
+                            <span class="stat-value" id="stat-vertices">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Faces</span>
+                            <span class="stat-value" id="stat-faces">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Dimensions</span>
+                            <span class="stat-value" id="stat-dimensions">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Scan</span>
+                            <span class="stat-value" id="stat-name">-</span>
+                        </div>
+                    </div>
+                </div>
 
-            <div id="instructions">
-                <div class="instruction">
-                    <span class="instruction-key">Left Click</span>
-                    <span class="instruction-text">Rotate</span>
+                <div class="panel-section">
+                    <h3>&#x1F3A8; View Mode</h3>
+                    <div class="view-modes">
+                        <button class="view-btn active" data-mode="solid">Solid</button>
+                        <button class="view-btn" data-mode="wireframe">Wireframe</button>
+                        <button class="view-btn" data-mode="points">Points</button>
+                        <button class="view-btn" data-mode="transparent">Glass</button>
+                    </div>
                 </div>
-                <div class="instruction">
-                    <span class="instruction-key">Right Click</span>
-                    <span class="instruction-text">Pan</span>
-                </div>
-                <div class="instruction">
-                    <span class="instruction-key">Scroll</span>
-                    <span class="instruction-text">Zoom</span>
-                </div>
-            </div>
 
-            <div id="loading">
-                <div class="spinner"></div>
-                <div id="loading-text">Initializing 3D viewer...</div>
-                <div id="loading-detail"></div>
+                <div class="panel-section">
+                    <h3>&#x1F3AF; Camera</h3>
+                    <div class="camera-presets">
+                        <button class="preset-btn" data-view="top">Top</button>
+                        <button class="preset-btn" data-view="front">Front</button>
+                        <button class="preset-btn" data-view="side">Side</button>
+                        <button class="preset-btn" data-view="perspective">3D</button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>&#x2699; Settings</h3>
+                    <div class="color-settings">
+                        <div class="color-option">
+                            <label>Point Size</label>
+                            <input type="range" id="point-size" min="1" max="10" value="2">
+                        </div>
+                        <div class="color-option">
+                            <label>Brightness</label>
+                            <input type="range" id="brightness" min="50" max="150" value="100">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -353,5 +546,71 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="js/lidar-viewer.js"></script>
+    <script>
+        // Additional UI enhancements
+        document.addEventListener('DOMContentLoaded', () => {
+            // View mode buttons
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    if (window.viewer) {
+                        window.viewer.setViewMode(btn.dataset.mode);
+                    }
+                });
+            });
+
+            // Camera presets
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (window.viewer) {
+                        window.viewer.setCameraView(btn.dataset.view);
+                    }
+                });
+            });
+
+            // Auto rotate toggle
+            const rotateBtn = document.getElementById('auto-rotate');
+            rotateBtn.addEventListener('click', () => {
+                rotateBtn.classList.toggle('active');
+                if (window.viewer) {
+                    window.viewer.toggleAutoRotate();
+                }
+            });
+
+            // Reset view
+            document.getElementById('reset-view').addEventListener('click', () => {
+                if (window.viewer) {
+                    window.viewer.resetView();
+                }
+            });
+
+            // Screenshot
+            document.getElementById('screenshot').addEventListener('click', () => {
+                if (window.viewer) {
+                    window.viewer.takeScreenshot();
+                }
+            });
+
+            // Point size
+            document.getElementById('point-size').addEventListener('input', (e) => {
+                if (window.viewer) {
+                    window.viewer.setPointSize(parseFloat(e.target.value));
+                }
+            });
+
+            // Brightness
+            document.getElementById('brightness').addEventListener('input', (e) => {
+                const value = parseInt(e.target.value) / 100;
+                if (window.viewer && window.viewer.lights) {
+                    window.viewer.lights.forEach(light => {
+                        if (light.intensity !== undefined) {
+                            light.intensity = value;
+                        }
+                    });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
