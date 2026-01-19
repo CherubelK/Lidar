@@ -19,12 +19,24 @@ except ImportError:
     # Fall back to NumPy-based processor
     from .point_cloud_processor_numpy import PointCloudProcessorNumPy as PointCloudProcessor
 
-# SLAM components
-from .kiss_icp_odometry import KISSICPOdometry
+# SLAM components - import with error handling
+try:
+    from .kiss_icp_odometry import KISSICPOdometry
+except ImportError as e:
+    KISSICPOdometry = None
+    print(f"Warning: KISS-ICP not available: {e}")
+
 from .ikd_tree import IKDTree
 from .scan_context import ScanContext, ScanContextConfig
 from .pose_graph import PoseGraph
-from .complete_slam import CompleteSLAM, SLAMConfig
+from .imu_integration import IMUIntegration, IMUPreintegration
+
+try:
+    from .complete_slam import CompleteSLAM, SLAMConfig
+except ImportError as e:
+    CompleteSLAM = None
+    SLAMConfig = None
+    print(f"Warning: Complete SLAM not available: {e}")
 
 __all__ = [
     'PointCloudProcessor',
@@ -34,5 +46,7 @@ __all__ = [
     'ScanContextConfig',
     'PoseGraph',
     'CompleteSLAM',
-    'SLAMConfig'
+    'SLAMConfig',
+    'IMUIntegration',
+    'IMUPreintegration'
 ]

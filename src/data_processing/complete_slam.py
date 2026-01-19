@@ -11,7 +11,6 @@ Based on Point-LIO architecture but implemented in pure Python
 """
 
 import numpy as np
-import open3d as o3d
 from typing import List, Tuple, Optional, Dict
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,10 +18,18 @@ import json
 import time
 import logging
 
+# Try to import Open3D, fall back to scipy-based ICP if not available
+try:
+    import open3d as o3d
+    HAS_OPEN3D = True
+except ImportError:
+    HAS_OPEN3D = False
+
 from .kiss_icp_odometry import KISSICPOdometry
 from .ikd_tree import IKDTree
 from .scan_context import ScanContext, ScanContextConfig
 from .pose_graph import PoseGraph
+from .icp_registration import ICPRegistration
 
 logger = logging.getLogger(__name__)
 
@@ -266,44 +273,50 @@ class CompleteSLAM:
             4x4 relative transformation or None if failed
         """
         try:
-            # Get initial estimate from Scan Context
-            sc_source = self.scan_context.scan_contexts[source_idx]
-            sc_target = self.scan_context.scan_contexts[-1]
+            if HAS_OPEN3D:
+                # Use Open3D for ICP (faster, more robust)
+                pcd_source = o3d.geometry.PointCloud()
+                pcd_source.points = o3d.utility.Vector3dVector(source_points)
 
-            # Create point clouds
-            pcd_source = o3d.geometry.PointCloud()
-            pcd_source.points = o3d.utility.Vector3dVector(source_points)
+                pcd_target = o3d.geometry.PointCloud()
+                pcd_target.points = o3d.utility.Vector3dVector(target_points)
 
-            pcd_target = o3d.geometry.PointCloud()
-            pcd_target.points = o3d.utility.Vector3dVector(target_points)
+                # Downsample
+                voxel_size = self.config.voxel_size * 2
+                pcd_source = pcd_source.voxel_down_sample(voxel_size)
+                pcd_target = pcd_target.voxel_down_sample(voxel_size)
 
-            # Downsample
-            voxel_size = self.config.voxel_size * 2
-            pcd_source = pcd_source.voxel_down_sample(voxel_size)
-            pcd_target = pcd_target.voxel_down_sample(voxel_size)
+                # Estimate normals
+                pcd_source.estimate_normals(
+                    search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size*2, max_nn=30)
+                )
+                pcd_target.estimate_normals(
+                    search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size*2, max_nn=30)
+                )
 
-            # Estimate normals
-            pcd_source.estimate_normals(
-                search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size*2, max_nn=30)
-            )
-            pcd_target.estimate_normals(
-                search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size*2, max_nn=30)
-            )
+                # ICP registration
+                threshold = voxel_size * 3
+                reg = o3d.pipelines.registration.registration_icp(
+                    pcd_source, pcd_target, threshold, np.eye(4),
+                    o3d.pipelines.registration.TransformationEstimationPointToPlane(),
+                    o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50)
+                )
 
-            # ICP registration
-            threshold = voxel_size * 3
-            reg = o3d.pipelines.registration.registration_icp(
-                pcd_source, pcd_target, threshold, np.eye(4),
-                o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-                o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50)
-            )
-
-            if reg.fitness > 0.3:  # Minimum overlap
-                return reg.transformation
+                if reg.fitness > 0.3:
+                    return reg.transformation
+                else:
+                    logger.warning(f"ICP registration failed (fitness={reg.fitness:.3f})")
+                    return None
             else:
-                logger.warning(f"ICP registration failed for loop closure "
-                             f"(fitness={reg.fitness:.3f})")
-                return None
+                # Use our scipy-based ICP implementation
+                icp = ICPRegistration(max_iterations=50, tolerance=1e-6)
+                transform, fitness = icp.register(source_points, target_points)
+
+                if fitness > 0.3:  # Fitness threshold (30% overlap)
+                    return transform
+                else:
+                    logger.warning(f"ICP registration failed (fitness={fitness:.3f})")
+                    return None
 
         except Exception as e:
             logger.error(f"Loop closure ICP failed: {e}")
@@ -400,10 +413,14 @@ class CompleteSLAM:
             if len(map_points) > 0:
                 np.save(output_path / f"{prefix}_map.npy", map_points)
 
-                # Also save as PLY
-                pcd = o3d.geometry.PointCloud()
-                pcd.points = o3d.utility.Vector3dVector(map_points)
-                o3d.io.write_point_cloud(str(output_path / f"{prefix}_map.ply"), pcd)
+                # Also save as PLY if Open3D available
+                if HAS_OPEN3D:
+                    pcd = o3d.geometry.PointCloud()
+                    pcd.points = o3d.utility.Vector3dVector(map_points)
+                    o3d.io.write_point_cloud(str(output_path / f"{prefix}_map.ply"), pcd)
+                else:
+                    # Save simple PLY without Open3D
+                    self._save_ply_simple(map_points, output_path / f"{prefix}_map.ply")
 
                 logger.info(f"Saved map: {len(map_points)} points")
 
@@ -440,6 +457,19 @@ class CompleteSLAM:
             json.dump(metadata, f, indent=2, default=str)
 
         logger.info(f"SLAM results saved to {output_path}")
+
+    def _save_ply_simple(self, points: np.ndarray, filepath: Path) -> None:
+        """Save point cloud as PLY file without Open3D"""
+        with open(filepath, 'w') as f:
+            f.write("ply\n")
+            f.write("format ascii 1.0\n")
+            f.write(f"element vertex {len(points)}\n")
+            f.write("property float x\n")
+            f.write("property float y\n")
+            f.write("property float z\n")
+            f.write("end_header\n")
+            for p in points:
+                f.write(f"{p[0]:.6f} {p[1]:.6f} {p[2]:.6f}\n")
 
     def reset(self) -> None:
         """Reset SLAM system"""

@@ -54,10 +54,10 @@ def run_slam_scan(duration: int = 120, name: str = "slam_scan",
     print("="*60)
     print(f"""
 Components:
-  ├─ Odometry: KISS-ICP (frame-to-frame matching)
-  ├─ Map: ikd-Tree (incremental k-d tree)
-  ├─ Loop Closure: Scan Context (place recognition)
-  └─ Optimization: Pose Graph (drift correction)
+  - Odometry: KISS-ICP (frame-to-frame matching)
+  - Map: ikd-Tree (incremental k-d tree)
+  - Loop Closure: Scan Context (place recognition)
+  - Optimization: Pose Graph (drift correction)
 
 Instructions:
   1. Move SLOWLY (10-20cm steps, wait 2-3 seconds)
@@ -81,7 +81,7 @@ Duration: {duration} seconds
         print("  3. Check your network adapter is 192.168.1.2")
         return
 
-    print("✓ LiDAR connected")
+    print("[OK] LiDAR connected")
 
     # Initialize SLAM system
     print("\nInitializing SLAM system...")
@@ -98,7 +98,7 @@ Duration: {duration} seconds
     )
 
     slam = CompleteSLAM(slam_config)
-    print("✓ SLAM system initialized")
+    print("[OK] SLAM system initialized")
 
     # Prepare output directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -154,11 +154,11 @@ Duration: {duration} seconds
                     'time': time.time() - start_time
                 })
                 print(f"\n{'='*50}")
-                print(f"🔄 LOOP CLOSURE DETECTED!")
+                print(f">>> LOOP CLOSURE DETECTED!")
                 print(f"   Current scan: {scan_count}")
                 print(f"   Matched with: {info['loop_idx']}")
                 if info['optimized']:
-                    print(f"   ✓ Pose graph optimized!")
+                    print(f"   [OK] Pose graph optimized!")
                 print(f"{'='*50}\n")
 
             # Progress update every 10 scans
@@ -175,7 +175,7 @@ Duration: {duration} seconds
 
             # Movement warning
             if movement > 0.5 and scan_count > 1:
-                print(f"  ⚠ Moving too fast! ({movement:.2f}m) - slow down for better tracking")
+                print(f"  WARNING: Moving too fast! ({movement:.2f}m) - slow down for better tracking")
 
             time.sleep(0.1)  # ~10 Hz
 
@@ -213,13 +213,13 @@ Loop closures:  {len(loop_closures)}
 
         if len(loop_closures) > 0:
             if gap < 0.5:
-                print("\n✓ Excellent loop closure! Drift well corrected.")
+                print("\n[OK] Excellent loop closure! Drift well corrected.")
             elif gap < 1.0:
-                print("\n✓ Good loop closure. Some residual drift.")
+                print("\n[OK] Good loop closure. Some residual drift.")
             else:
-                print("\n⚠ Large gap - try walking a tighter loop or moving slower.")
+                print("\n[NOTE] Large gap - try walking a tighter loop or moving slower.")
         else:
-            print("\n⚠ No loop closures detected.")
+            print("\n[NOTE] No loop closures detected.")
             print("   Tip: Return to your starting position to trigger loop closure.")
 
     # Save results
@@ -252,13 +252,13 @@ Loop closures:  {len(loop_closures)}
             web_output = Path("web/models") / f"{scan_name}.json"
             web_output.parent.mkdir(parents=True, exist_ok=True)
             generator.save_for_web_viewer(str(web_output))
-            print(f"✓ Web model saved: {web_output}")
+            print(f"[OK] Web model saved: {web_output}")
             print(f"  View at: http://localhost:8000/viewer.html")
 
     except Exception as e:
         logger.warning(f"Could not generate web model: {e}")
 
-    print(f"\n✓ All results saved to: {output_path}")
+    print(f"\n[OK] All results saved to: {output_path}")
     print("\nFiles created:")
     for f in sorted(output_path.glob("*")):
         size = f.stat().st_size
