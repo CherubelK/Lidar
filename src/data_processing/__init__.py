@@ -31,6 +31,10 @@ from .ikd_tree import IKDTree
 from .scan_context import ScanContext, ScanContextConfig
 from .pose_graph import PoseGraph
 from .imu_integration import IMUIntegration, IMUPreintegration
+from .imu_position import (
+    IMUPositionEstimator, IMUPositionConfig, IMULiDARFusion,
+    Quaternion, calculate_position_from_imu
+)
 
 try:
     from .complete_slam import CompleteSLAM, SLAMConfig
@@ -61,6 +65,11 @@ __all__ = [
     'SLAMConfig',
     'IMUIntegration',
     'IMUPreintegration',
+    'IMUPositionEstimator',
+    'IMUPositionConfig',
+    'IMULiDARFusion',
+    'Quaternion',
+    'calculate_position_from_imu',
     'PointLIO',
     'PointLIOConfig',
     'PointLIOProcessor',
