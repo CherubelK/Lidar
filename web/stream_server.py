@@ -237,8 +237,8 @@ class LiDARStreamServer:
                 pass
         await self.send_status(websocket, "Scan stopped", "warning")
 
-    async def handler(self, websocket, path):
-        """Handle WebSocket connections."""
+    async def handler(self, websocket):
+        """Handle WebSocket connections (websockets 10.0+ compatible)."""
         await self.register(websocket)
         try:
             async for message in websocket:

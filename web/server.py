@@ -22,6 +22,23 @@ class ProjectHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         # Serve from project root to access docs and markdown files
         super().__init__(*args, directory=str(PROJECT_ROOT), **kwargs)
 
+    def translate_path(self, path):
+        """Translate URL path to filesystem path, handling docs and examples."""
+        # First get the parent's translation
+        translated = super().translate_path(path)
+
+        # Check if file exists - if not, try without URL encoding issues
+        if not os.path.exists(translated):
+            # Handle potential issues with path resolution on Windows
+            clean_path = path.split('?')[0].split('#')[0]  # Remove query/fragment
+            if clean_path.startswith('/'):
+                clean_path = clean_path[1:]
+            potential_path = PROJECT_ROOT / clean_path.replace('/', os.sep)
+            if potential_path.exists():
+                return str(potential_path)
+
+        return translated
+
     def do_GET(self):
         # Redirect root to web/index.html
         if self.path == '/' or self.path == '':

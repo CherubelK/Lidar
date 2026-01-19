@@ -735,8 +735,8 @@
     </footer>
 
     <script>
-        // Load scan count
-        fetch('models/')
+        // Load scan count - use absolute path from web directory
+        fetch('/web/models/')
             .then(r => r.text())
             .then(html => {
                 const matches = html.match(/\.json/g);
@@ -762,23 +762,34 @@
             if (activeLink) activeLink.classList.add('active');
 
             try {
-                // Try fetching from project root (when served by updated server)
-                let response = await fetch('/' + docPath);
+                // Fetch from project root using absolute path
+                const response = await fetch('/' + docPath);
                 if (!response.ok) {
-                    // Fallback to relative path
-                    response = await fetch('../' + docPath);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
-                if (!response.ok) throw new Error('Doc not found');
                 const markdown = await response.text();
+
+                // Check if we got HTML instead of markdown (directory listing or error page)
+                if (markdown.trim().startsWith('<!DOCTYPE') || markdown.trim().startsWith('<html')) {
+                    throw new Error('Received HTML instead of markdown');
+                }
+
                 content.innerHTML = marked.parse(markdown);
 
                 // Scroll to docs section
                 document.getElementById('docs').scrollIntoView({ behavior: 'smooth' });
             } catch (e) {
+                console.error('Failed to load doc:', docPath, e);
                 content.innerHTML = `
                     <h1>Document Not Found</h1>
-                    <p>Could not load: ${docPath}</p>
+                    <p>Could not load: <code>${docPath}</code></p>
+                    <p>Error: ${e.message}</p>
                     <p>Make sure the server is running: <code>python web/server.py</code></p>
+                    <h2>Troubleshooting</h2>
+                    <ul>
+                        <li>Check that the file exists in the project root</li>
+                        <li>Try accessing directly: <a href="/${docPath}" target="_blank">/${docPath}</a></li>
+                    </ul>
                 `;
             }
         }

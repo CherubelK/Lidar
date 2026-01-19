@@ -9,6 +9,7 @@ Includes:
 - Scan Context for loop closure detection
 - Pose Graph Optimization
 - Complete SLAM system
+- Point-LIO: Tightly-coupled LiDAR-Inertial Odometry
 """
 
 try:
@@ -38,6 +39,17 @@ except ImportError as e:
     SLAMConfig = None
     print(f"Warning: Complete SLAM not available: {e}")
 
+# Point-LIO: Tightly-coupled LiDAR-Inertial Odometry
+try:
+    from .point_lio import PointLIO, PointLIOConfig, PointLIOProcessor, create_point_lio, SO3
+except ImportError as e:
+    PointLIO = None
+    PointLIOConfig = None
+    PointLIOProcessor = None
+    create_point_lio = None
+    SO3 = None
+    print(f"Warning: Point-LIO not available: {e}")
+
 __all__ = [
     'PointCloudProcessor',
     'KISSICPOdometry',
@@ -48,5 +60,10 @@ __all__ = [
     'CompleteSLAM',
     'SLAMConfig',
     'IMUIntegration',
-    'IMUPreintegration'
+    'IMUPreintegration',
+    'PointLIO',
+    'PointLIOConfig',
+    'PointLIOProcessor',
+    'create_point_lio',
+    'SO3'
 ]

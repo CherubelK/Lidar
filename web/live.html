@@ -208,14 +208,35 @@
 
         /* Side Panel */
         .side-panel {
-            width: 300px;
+            width: 320px;
             background: var(--bg-card);
             border-left: 1px solid var(--border);
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 1rem;
             display: flex;
             flex-direction: column;
             gap: 1rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--bg-dark);
+        }
+
+        .side-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .side-panel::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+            border-radius: 4px;
+        }
+
+        .side-panel::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .side-panel::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
         }
 
         .panel-section {
@@ -475,6 +496,35 @@
                 </div>
 
                 <div class="panel-section">
+                    <h3>&#x1F3A5; Camera</h3>
+                    <div class="setting-row">
+                        <label>Fixed Camera</label>
+                        <input type="checkbox" id="fixed-camera" onchange="toggleFixedCamera()">
+                    </div>
+                    <div class="setting-row">
+                        <label>Auto-Rotate</label>
+                        <input type="checkbox" id="auto-rotate" onchange="toggleAutoRotate()">
+                    </div>
+                    <div class="setting-row">
+                        <label>Follow Position</label>
+                        <input type="checkbox" id="follow-position" onchange="toggleFollowPosition()">
+                    </div>
+                    <div class="setting-row">
+                        <label>Show Trajectory</label>
+                        <input type="checkbox" id="show-trajectory" checked onchange="toggleTrajectory()">
+                    </div>
+                    <div class="setting-row">
+                        <label>Point Size</label>
+                        <input type="number" id="point-size" value="0.02" min="0.005" max="0.1" step="0.005" onchange="updatePointSize()">
+                    </div>
+                    <div class="scan-controls" style="margin-top: 10px;">
+                        <button class="btn" onclick="resetCamera()">&#x1F3AF; Reset Camera</button>
+                        <button class="btn" onclick="setTopView()">&#x2B06; Top View</button>
+                        <button class="btn" onclick="setSideView()">&#x27A1; Side View</button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
                     <h3>&#x1F4DD; Log</h3>
                     <div class="log-console" id="log-console">
                         <div class="log-entry">Ready to connect...</div>
@@ -496,6 +546,26 @@
         let startTime = null;
         let frameCount = 0;
         let lastFpsTime = Date.now();
+        let fixedCamera = false;
+        let followPosition = false;  // Default OFF - prevents spinning (Point-LIO approach)
+        let lastPosition = [0, 0, 0];
+        let cameraTarget = new THREE.Vector3(0, 0, 0);
+
+        // Point-LIO inspired: Gravity-aligned world frame
+        // The world frame is fixed with Z pointing up (gravity-aligned)
+        // This prevents jarring camera rotations during scanning
+        let worldFrameInitialized = false;
+        let gravityAlignTransform = new THREE.Matrix4();  // Transform to gravity-aligned frame
+
+        // Pose interpolation for smooth transitions (from Point-LIO)
+        let currentPose = { x: 0, y: 0, z: 0 };
+        let targetPose = { x: 0, y: 0, z: 0 };
+        const POSE_LERP_FACTOR = 0.05;  // Smooth interpolation (lower = smoother)
+
+        // Trajectory visualization
+        let trajectoryLine = null;
+        let trajectoryPoints = [];
+        const MAX_TRAJECTORY_POINTS = 1000;
 
         // Initialize Three.js
         function initThree() {
@@ -520,6 +590,8 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
+            controls.autoRotate = false;
+            controls.autoRotateSpeed = 1.0;
 
             // Add grid
             const grid = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
@@ -533,6 +605,21 @@
             const ambient = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambient);
 
+            // Initialize trajectory line (Point-LIO style path visualization)
+            const trajectoryGeometry = new THREE.BufferGeometry();
+            const trajectoryMaterial = new THREE.LineBasicMaterial({
+                color: 0x22c55e,  // Green trajectory like RViz
+                linewidth: 2
+            });
+            trajectoryLine = new THREE.Line(trajectoryGeometry, trajectoryMaterial);
+            scene.add(trajectoryLine);
+
+            // Add current position marker
+            const markerGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            window.positionMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+            scene.add(window.positionMarker);
+
             // Resize handler
             window.addEventListener('resize', () => {
                 camera.aspect = container.clientWidth / container.clientHeight;
@@ -545,6 +632,24 @@
 
         function animate() {
             requestAnimationFrame(animate);
+
+            // Point-LIO inspired: Smooth pose interpolation
+            // This prevents jarring camera movements by gradually moving to target
+            if (followPosition && !fixedCamera) {
+                currentPose.x += (targetPose.x - currentPose.x) * POSE_LERP_FACTOR;
+                currentPose.y += (targetPose.y - currentPose.y) * POSE_LERP_FACTOR;
+                currentPose.z += (targetPose.z - currentPose.z) * POSE_LERP_FACTOR;
+
+                // Update camera target smoothly
+                cameraTarget.set(currentPose.x, currentPose.y, currentPose.z);
+                controls.target.copy(cameraTarget);
+            }
+
+            // Update position marker
+            if (window.positionMarker) {
+                window.positionMarker.position.set(currentPose.x, currentPose.y, currentPose.z);
+            }
+
             controls.update();
             renderer.render(scene, camera);
 
@@ -681,6 +786,21 @@
                 if (data.type === 'points') {
                     updatePointCloud(data.points);
                     document.getElementById('stat-scans').textContent = data.scan_count;
+
+                    // Point-LIO inspired: Update target pose for smooth interpolation
+                    // The actual interpolation happens in animate() for smooth 60fps updates
+                    if (data.position) {
+                        lastPosition = data.position;
+                        // Set target pose (interpolated in animate loop)
+                        // Convert from LiDAR coords (X forward, Y left, Z up) to Three.js (Y up)
+                        targetPose.x = data.position[0];
+                        targetPose.y = data.position[2];  // Z becomes Y (up)
+                        targetPose.z = -data.position[1]; // Y becomes -Z
+
+                        // Update trajectory (Point-LIO path visualization)
+                        updateTrajectory(targetPose.x, targetPose.y, targetPose.z);
+                    }
+
                     if (data.loop_closure) {
                         const loops = parseInt(document.getElementById('stat-loops').textContent) + 1;
                         document.getElementById('stat-loops').textContent = loops;
@@ -760,6 +880,31 @@
             log(`Saved ${allPoints.length.toLocaleString()} points`, 'success');
         }
 
+        // Point-LIO inspired: Trajectory visualization (like RViz /path topic)
+        function updateTrajectory(x, y, z) {
+            trajectoryPoints.push(new THREE.Vector3(x, y, z));
+
+            // Limit trajectory length
+            if (trajectoryPoints.length > MAX_TRAJECTORY_POINTS) {
+                trajectoryPoints.shift();
+            }
+
+            // Update line geometry
+            if (trajectoryLine && trajectoryPoints.length >= 2) {
+                const positions = new Float32Array(trajectoryPoints.length * 3);
+                for (let i = 0; i < trajectoryPoints.length; i++) {
+                    positions[i * 3] = trajectoryPoints[i].x;
+                    positions[i * 3 + 1] = trajectoryPoints[i].y;
+                    positions[i * 3 + 2] = trajectoryPoints[i].z;
+                }
+                trajectoryLine.geometry.setAttribute(
+                    'position',
+                    new THREE.BufferAttribute(positions, 3)
+                );
+                trajectoryLine.geometry.setDrawRange(0, trajectoryPoints.length);
+            }
+        }
+
         function clearScan() {
             allPoints = [];
             if (pointCloud) {
@@ -768,11 +913,102 @@
                 pointCloud.material.dispose();
                 pointCloud = null;
             }
+
+            // Clear trajectory
+            trajectoryPoints = [];
+            if (trajectoryLine) {
+                trajectoryLine.geometry.setAttribute(
+                    'position',
+                    new THREE.BufferAttribute(new Float32Array(0), 3)
+                );
+            }
+
+            // Reset pose tracking
+            currentPose = { x: 0, y: 0, z: 0 };
+            targetPose = { x: 0, y: 0, z: 0 };
+            lastPosition = [0, 0, 0];
+            cameraTarget.set(0, 0, 0);
+
+            // Reset position marker
+            if (window.positionMarker) {
+                window.positionMarker.position.set(0, 0, 0);
+            }
+
             document.getElementById('stat-points').textContent = '0';
             document.getElementById('stat-scans').textContent = '0';
             document.getElementById('stat-loops').textContent = '0';
             document.getElementById('stat-duration').textContent = '0:00';
-            log('Cleared point cloud', 'info');
+            log('Cleared point cloud and trajectory', 'info');
+        }
+
+        // Camera control functions
+        function toggleFixedCamera() {
+            fixedCamera = document.getElementById('fixed-camera').checked;
+            controls.enabled = !fixedCamera;
+            if (fixedCamera) {
+                log('Camera fixed - pan/rotate disabled', 'info');
+            } else {
+                log('Camera controls enabled', 'info');
+            }
+        }
+
+        function toggleAutoRotate() {
+            controls.autoRotate = document.getElementById('auto-rotate').checked;
+            if (controls.autoRotate) {
+                log('Auto-rotate enabled', 'info');
+            } else {
+                log('Auto-rotate disabled', 'info');
+            }
+        }
+
+        function toggleFollowPosition() {
+            followPosition = document.getElementById('follow-position').checked;
+            if (followPosition) {
+                log('Camera will follow scan position (smooth interpolation)', 'info');
+            } else {
+                log('Camera target fixed in world frame', 'info');
+            }
+        }
+
+        function toggleTrajectory() {
+            const show = document.getElementById('show-trajectory').checked;
+            if (trajectoryLine) {
+                trajectoryLine.visible = show;
+            }
+            if (window.positionMarker) {
+                window.positionMarker.visible = show;
+            }
+            log(show ? 'Trajectory visible' : 'Trajectory hidden', 'info');
+        }
+
+        function updatePointSize() {
+            const size = parseFloat(document.getElementById('point-size').value);
+            if (pointCloud && pointCloud.material) {
+                pointCloud.material.size = size;
+                log(`Point size set to ${size}`, 'info');
+            }
+        }
+
+        function resetCamera() {
+            camera.position.set(5, 5, 5);
+            controls.target.set(0, 0, 0);
+            cameraTarget.set(0, 0, 0);
+            controls.update();
+            log('Camera reset to default position', 'info');
+        }
+
+        function setTopView() {
+            camera.position.set(0, 15, 0);
+            controls.target.copy(cameraTarget);
+            controls.update();
+            log('Top view activated', 'info');
+        }
+
+        function setSideView() {
+            camera.position.set(15, 2, 0);
+            controls.target.copy(cameraTarget);
+            controls.update();
+            log('Side view activated', 'info');
         }
 
         // Initialize on load
