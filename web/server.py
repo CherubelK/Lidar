@@ -27,7 +27,7 @@ class ProjectHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         if self.path == '/' or self.path == '':
             self.path = '/web/index.html'
         # Redirect paths without web/ prefix for web assets
-        elif self.path.startswith('/index.html') or self.path.startswith('/viewer.html'):
+        elif self.path.startswith('/index.html') or self.path.startswith('/viewer.html') or self.path.startswith('/live.html'):
             self.path = '/web' + self.path
         elif self.path.startswith('/js/') or self.path.startswith('/css/') or self.path.startswith('/models/'):
             self.path = '/web' + self.path
@@ -61,6 +61,9 @@ def main():
         print("Pages:")
         print(f"  Home:     http://localhost:{PORT}/")
         print(f"  Viewer:   http://localhost:{PORT}/viewer.html")
+        print(f"  Live:     http://localhost:{PORT}/live.html")
+        print()
+        print("For live streaming, also run: python web/stream_server.py")
         print()
         print("Press Ctrl+C to stop the server")
         print("=" * 60)
