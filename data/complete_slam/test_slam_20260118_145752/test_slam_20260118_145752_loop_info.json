@@ -1,0 +1,9 @@
+{
+  "scan_name": "test_slam_20260118_145752",
+  "duration": 120.08761978149414,
+  "total_scans": 545,
+  "map_points": 112899,
+  "path_length": 2055.274311824057,
+  "loop_closures": [],
+  "final_gap": 770.8807009967529
+}

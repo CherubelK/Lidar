@@ -1,0 +1,90 @@
+{
+  "scan_name": "test_slam_20260118_192358",
+  "duration": 123.52132558822632,
+  "total_scans": 69,
+  "map_points": 15129,
+  "path_length": 8.89090496868701,
+  "loop_closures": [
+    {
+      "scan_idx": 52,
+      "loop_idx": 0,
+      "time": 11.645539283752441
+    },
+    {
+      "scan_idx": 53,
+      "loop_idx": 1,
+      "time": 16.42256212234497
+    },
+    {
+      "scan_idx": 54,
+      "loop_idx": 2,
+      "time": 21.493512868881226
+    },
+    {
+      "scan_idx": 55,
+      "loop_idx": 3,
+      "time": 26.812464237213135
+    },
+    {
+      "scan_idx": 56,
+      "loop_idx": 0,
+      "time": 32.67396545410156
+    },
+    {
+      "scan_idx": 57,
+      "loop_idx": 2,
+      "time": 38.75557231903076
+    },
+    {
+      "scan_idx": 58,
+      "loop_idx": 6,
+      "time": 45.12140417098999
+    },
+    {
+      "scan_idx": 61,
+      "loop_idx": 9,
+      "time": 52.22839331626892
+    },
+    {
+      "scan_idx": 62,
+      "loop_idx": 10,
+      "time": 59.70293736457825
+    },
+    {
+      "scan_idx": 63,
+      "loop_idx": 2,
+      "time": 67.10639977455139
+    },
+    {
+      "scan_idx": 64,
+      "loop_idx": 4,
+      "time": 75.61615705490112
+    },
+    {
+      "scan_idx": 65,
+      "loop_idx": 8,
+      "time": 84.84811472892761
+    },
+    {
+      "scan_idx": 66,
+      "loop_idx": 13,
+      "time": 95.50456953048706
+    },
+    {
+      "scan_idx": 67,
+      "loop_idx": 2,
+      "time": 105.2951431274414
+    },
+    {
+      "scan_idx": 68,
+      "loop_idx": 7,
+      "time": 114.28192210197449
+    },
+    {
+      "scan_idx": 69,
+      "loop_idx": 9,
+      "time": 123.42075514793396
+    }
+  ],
+  "final_gap": 1.2725648187629888
+}

@@ -1,0 +1,31 @@
+{
+  "scan_name": "imu_fused_test_20260119_110629",
+  "duration": 55.63814926147461,
+  "total_scans": 75,
+  "map_points": 47144,
+  "path_length": 18.517586585177455,
+  "loop_closures": [
+    {
+      "scan_idx": 42,
+      "loop_idx": 8,
+      "time": 10.344210147857666
+    },
+    {
+      "scan_idx": 64,
+      "loop_idx": 29,
+      "time": 24.4369854927063
+    },
+    {
+      "scan_idx": 75,
+      "loop_idx": 39,
+      "time": 40.24527192115784
+    }
+  ],
+  "imu_updates": 1,
+  "imu_initialized": true,
+  "config": {
+    "imu_weight": 0.3,
+    "use_imu_orientation": true,
+    "use_imu_position": true
+  }
+}

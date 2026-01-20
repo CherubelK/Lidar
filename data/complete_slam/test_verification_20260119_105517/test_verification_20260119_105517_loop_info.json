@@ -1,0 +1,25 @@
+{
+  "scan_name": "test_verification_20260119_105517",
+  "duration": 33.58545756340027,
+  "total_scans": 59,
+  "map_points": 13055,
+  "path_length": 10.188143480640878,
+  "loop_closures": [
+    {
+      "scan_idx": 55,
+      "loop_idx": 2,
+      "time": 14.36923360824585
+    },
+    {
+      "scan_idx": 56,
+      "loop_idx": 4,
+      "time": 22.457148790359497
+    },
+    {
+      "scan_idx": 59,
+      "loop_idx": 1,
+      "time": 33.485116720199585
+    }
+  ],
+  "final_gap": 0.8075289060603377
+}

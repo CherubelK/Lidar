@@ -1,0 +1,15 @@
+{
+  "total_measurements": 20,
+  "avg_deskew_mm": 76.24921037695452,
+  "motion_predictions": 107,
+  "gyro_bias": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "accel_bias": [
+    0.0,
+    0.0,
+    0.0
+  ]
+}

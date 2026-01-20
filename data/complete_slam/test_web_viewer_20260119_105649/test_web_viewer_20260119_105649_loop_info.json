@@ -1,0 +1,30 @@
+{
+  "scan_name": "test_web_viewer_20260119_105649",
+  "duration": 35.335379123687744,
+  "total_scans": 60,
+  "map_points": 13046,
+  "path_length": 8.055339825215272,
+  "loop_closures": [
+    {
+      "scan_idx": 54,
+      "loop_idx": 1,
+      "time": 13.584695816040039
+    },
+    {
+      "scan_idx": 57,
+      "loop_idx": 4,
+      "time": 20.597860097885132
+    },
+    {
+      "scan_idx": 59,
+      "loop_idx": 0,
+      "time": 27.556730270385742
+    },
+    {
+      "scan_idx": 60,
+      "loop_idx": 5,
+      "time": 35.23283910751343
+    }
+  ],
+  "final_gap": 1.4932267341076404
+}
