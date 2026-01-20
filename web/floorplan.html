@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Floor Plans - LiDAR Scanner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        nav {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: #e0e0e0;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: #667eea;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #888;
+            margin-bottom: 2rem;
+        }
+
+        /* Controls Panel */
+        .controls {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            font-size: 0.85rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e0e0e0;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            min-width: 250px;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Floor Plan Display */
+        .floorplan-container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1000px) {
+            .floorplan-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .canvas-wrapper {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            position: relative;
+            min-height: 600px;
+        }
+
+        #floorplan-canvas {
+            width: 100%;
+            height: 600px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        /* Dimensions Panel */
+        .dimensions-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .dimensions-panel h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dimension-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .dimension-item:last-child {
+            border-bottom: none;
+        }
+
+        .dimension-label {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .dimension-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .dimension-value small {
+            font-size: 0.75rem;
+            color: #888;
+            font-weight: normal;
+        }
+
+        /* Wall List */
+        .wall-list {
+            margin-top: 1.5rem;
+        }
+
+        .wall-list h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: #888;
+        }
+
+        .wall-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .wall-item .wall-name {
+            color: #888;
+        }
+
+        .wall-item .wall-length {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: #888;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* No Data State */
+        .no-data {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            color: #888;
+            text-align: center;
+        }
+
+        .no-data svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="logo">LiDAR Scanner</div>
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="viewer.html">3D Viewer</a>
+            <a href="floorplan.html" class="active">Floor Plans</a>
+            <a href="live.html">Live Stream</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>2D Floor Plans</h1>
+        <p class="subtitle">View room layouts and dimensions from LiDAR scans</p>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Select Scan</label>
+                <select id="scan-select">
+                    <option value="">Loading scans...</option>
+                </select>
+            </div>
+            <button id="generate-btn" disabled>Generate Floor Plan</button>
+            <button id="download-btn" disabled>Download PNG</button>
+        </div>
+
+        <div class="floorplan-container">
+            <div class="canvas-wrapper">
+                <canvas id="floorplan-canvas"></canvas>
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <span>Analyzing room layout...</span>
+                </div>
+                <div id="no-data" class="no-data">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+                    </svg>
+                    <p>Select a scan and click "Generate Floor Plan"<br>to view the 2D room layout</p>
+                </div>
+            </div>
+
+            <div class="dimensions-panel">
+                <h2>Room Dimensions</h2>
+
+                <div class="dimension-item">
+                    <span class="dimension-label">Width</span>
+                    <span class="dimension-value" id="dim-width">-- <small>ft</small></span>
+                </div>
+
+                <div class="dimension-item">
+                    <span class="dimension-label">Length</span>
+                    <span class="dimension-value" id="dim-length">-- <small>ft</small></span>
+                </div>
+
+                <div class="dimension-item">
+                    <span class="dimension-label">Ceiling Height</span>
+                    <span class="dimension-value" id="dim-height">-- <small>ft</small></span>
+                </div>
+
+                <div class="dimension-item">
+                    <span class="dimension-label">Floor Area</span>
+                    <span class="dimension-value" id="dim-area">-- <small>ft²</small></span>
+                </div>
+
+                <div class="wall-list">
+                    <h3>Wall Segments</h3>
+                    <div id="wall-items">
+                        <p style="color: #666; font-size: 0.9rem;">No floor plan generated</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Unitree L2 LiDAR Floor Plan Generator</p>
+        <p><a href="index.html">Back to Home</a></p>
+    </footer>
+
+    <script>
+        // Global state
+        let currentScan = null;
+        let currentLayout = null;
+        const canvas = document.getElementById('floorplan-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Conversion: meters to feet
+        const M_TO_FT = 3.28084;
+
+        // Load available scans
+        async function loadScans() {
+            try {
+                const response = await fetch('models/index.json');
+                const data = await response.json();
+
+                const select = document.getElementById('scan-select');
+                select.innerHTML = '<option value="">Select a scan...</option>';
+
+                data.scans.forEach(scan => {
+                    const option = document.createElement('option');
+                    option.value = scan.file;
+                    option.textContent = scan.name.replace(/_/g, ' ');
+                    select.appendChild(option);
+                });
+
+                document.getElementById('generate-btn').disabled = true;
+
+            } catch (error) {
+                console.error('Error loading scans:', error);
+                document.getElementById('scan-select').innerHTML =
+                    '<option value="">Error loading scans</option>';
+            }
+        }
+
+        // Load point cloud data
+        async function loadPointCloud(filename) {
+            const response = await fetch(`models/${filename}`);
+            const data = await response.json();
+
+            // Parse vertices (flat array of x, y, z)
+            const vertices = data.vertices;
+            const points = [];
+
+            for (let i = 0; i < vertices.length; i += 3) {
+                points.push({
+                    x: vertices[i],
+                    y: vertices[i + 1],
+                    z: vertices[i + 2]
+                });
+            }
+
+            return points;
+        }
+
+        // Extract wall points from multiple height slices
+        function extractWallSlices(points, numSlices = 8) {
+            // Find Z range
+            let zMin = Infinity, zMax = -Infinity;
+            points.forEach(p => {
+                zMin = Math.min(zMin, p.z);
+                zMax = Math.max(zMax, p.z);
+            });
+
+            const height = zMax - zMin;
+            const sliceThickness = 0.1; // 10cm slices
+            const wallPoints = [];
+
+            // Sample at different heights
+            for (let i = 0; i < numSlices; i++) {
+                const h = zMin + 0.3 + (i / numSlices) * (height - 0.6);
+                const sliceMin = h - sliceThickness / 2;
+                const sliceMax = h + sliceThickness / 2;
+
+                points.forEach(p => {
+                    if (p.z >= sliceMin && p.z <= sliceMax) {
+                        wallPoints.push({ x: p.x, y: p.y });
+                    }
+                });
+            }
+
+            return { wallPoints, zMin, zMax, height };
+        }
+
+        // Fit minimum bounding rectangle
+        function fitRectangle(points) {
+            if (points.length < 3) return null;
+
+            // Find convex hull (simple Graham scan)
+            const hull = convexHull(points);
+            if (hull.length < 3) return null;
+
+            let minArea = Infinity;
+            let bestRect = null;
+
+            // Try angles based on hull edges
+            for (let i = 0; i < hull.length; i++) {
+                const p1 = hull[i];
+                const p2 = hull[(i + 1) % hull.length];
+
+                const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+
+                // Rotate points
+                const cos = Math.cos(-angle);
+                const sin = Math.sin(-angle);
+
+                let minX = Infinity, maxX = -Infinity;
+                let minY = Infinity, maxY = -Infinity;
+
+                hull.forEach(p => {
+                    const rx = p.x * cos - p.y * sin;
+                    const ry = p.x * sin + p.y * cos;
+                    minX = Math.min(minX, rx);
+                    maxX = Math.max(maxX, rx);
+                    minY = Math.min(minY, ry);
+                    maxY = Math.max(maxY, ry);
+                });
+
+                const width = maxX - minX;
+                const height = maxY - minY;
+                const area = width * height;
+
+                if (area < minArea) {
+                    minArea = area;
+
+                    // Rectangle corners
+                    const cos2 = Math.cos(angle);
+                    const sin2 = Math.sin(angle);
+
+                    bestRect = [
+                        { x: minX * cos2 - minY * sin2, y: minX * sin2 + minY * cos2 },
+                        { x: maxX * cos2 - minY * sin2, y: maxX * sin2 + minY * cos2 },
+                        { x: maxX * cos2 - maxY * sin2, y: maxX * sin2 + maxY * cos2 },
+                        { x: minX * cos2 - maxY * sin2, y: minX * sin2 + maxY * cos2 }
+                    ];
+                }
+            }
+
+            return bestRect;
+        }
+
+        // Simple convex hull (Graham scan)
+        function convexHull(points) {
+            if (points.length < 3) return points;
+
+            // Find lowest point
+            let lowest = 0;
+            for (let i = 1; i < points.length; i++) {
+                if (points[i].y < points[lowest].y ||
+                    (points[i].y === points[lowest].y && points[i].x < points[lowest].x)) {
+                    lowest = i;
+                }
+            }
+
+            // Sort by polar angle
+            const pivot = points[lowest];
+            const sorted = points.slice().sort((a, b) => {
+                const angleA = Math.atan2(a.y - pivot.y, a.x - pivot.x);
+                const angleB = Math.atan2(b.y - pivot.y, b.x - pivot.x);
+                return angleA - angleB;
+            });
+
+            // Graham scan
+            const hull = [];
+            for (const p of sorted) {
+                while (hull.length >= 2 &&
+                       cross(hull[hull.length - 2], hull[hull.length - 1], p) <= 0) {
+                    hull.pop();
+                }
+                hull.push(p);
+            }
+
+            return hull;
+        }
+
+        function cross(o, a, b) {
+            return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+        }
+
+        // Calculate room dimensions from rectangle
+        function calculateDimensions(rect, height) {
+            if (!rect || rect.length < 4) return null;
+
+            const side1 = Math.sqrt(
+                Math.pow(rect[1].x - rect[0].x, 2) +
+                Math.pow(rect[1].y - rect[0].y, 2)
+            );
+            const side2 = Math.sqrt(
+                Math.pow(rect[2].x - rect[1].x, 2) +
+                Math.pow(rect[2].y - rect[1].y, 2)
+            );
+
+            const width = Math.min(side1, side2);
+            const length = Math.max(side1, side2);
+            const area = width * length;
+
+            return {
+                width: width * M_TO_FT,
+                length: length * M_TO_FT,
+                height: height * M_TO_FT,
+                area: area * M_TO_FT * M_TO_FT,
+                walls: [
+                    { name: 'Wall A', length: side1 * M_TO_FT },
+                    { name: 'Wall B', length: side2 * M_TO_FT },
+                    { name: 'Wall C', length: side1 * M_TO_FT },
+                    { name: 'Wall D', length: side2 * M_TO_FT }
+                ]
+            };
+        }
+
+        // Draw floor plan on canvas
+        function drawFloorPlan(rect, dimensions, wallPoints) {
+            // Set canvas size
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth - 32;
+            canvas.height = 600;
+
+            const padding = 80;
+            const width = canvas.width - padding * 2;
+            const height = canvas.height - padding * 2;
+
+            // Clear canvas
+            ctx.fillStyle = '#f5f5f5';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (!rect) return;
+
+            // Find bounds
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+
+            rect.forEach(p => {
+                minX = Math.min(minX, p.x);
+                maxX = Math.max(maxX, p.x);
+                minY = Math.min(minY, p.y);
+                maxY = Math.max(maxY, p.y);
+            });
+
+            // Scale to fit canvas
+            const scaleX = width / (maxX - minX);
+            const scaleY = height / (maxY - minY);
+            const scale = Math.min(scaleX, scaleY) * 0.85;
+
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+
+            function transform(p) {
+                return {
+                    x: canvas.width / 2 + (p.x - centerX) * scale,
+                    y: canvas.height / 2 - (p.y - centerY) * scale
+                };
+            }
+
+            // Draw wall points (subtle)
+            if (wallPoints && wallPoints.length > 0) {
+                ctx.fillStyle = 'rgba(100, 126, 234, 0.15)';
+                const sampleRate = Math.max(1, Math.floor(wallPoints.length / 5000));
+                for (let i = 0; i < wallPoints.length; i += sampleRate) {
+                    const tp = transform(wallPoints[i]);
+                    ctx.beginPath();
+                    ctx.arc(tp.x, tp.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Draw room fill
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            const t0 = transform(rect[0]);
+            ctx.moveTo(t0.x, t0.y);
+            for (let i = 1; i < rect.length; i++) {
+                const t = transform(rect[i]);
+                ctx.lineTo(t.x, t.y);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw walls (thick black lines)
+            ctx.strokeStyle = '#1a1a2e';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'square';
+            ctx.beginPath();
+            ctx.moveTo(t0.x, t0.y);
+            for (let i = 1; i < rect.length; i++) {
+                const t = transform(rect[i]);
+                ctx.lineTo(t.x, t.y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // Draw dimension labels
+            ctx.font = 'bold 14px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let i = 0; i < 4; i++) {
+                const p1 = transform(rect[i]);
+                const p2 = transform(rect[(i + 1) % 4]);
+
+                const midX = (p1.x + p2.x) / 2;
+                const midY = (p1.y + p2.y) / 2;
+
+                // Wall length in feet
+                const wallLen = dimensions.walls[i].length;
+
+                // Calculate perpendicular offset
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                const perpX = -dy / len * 30;
+                const perpY = dx / len * 30;
+
+                // Draw label background
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = '#667eea';
+                ctx.lineWidth = 2;
+
+                const labelX = midX + perpX;
+                const labelY = midY + perpY;
+                const labelText = `${wallLen.toFixed(1)} ft`;
+
+                const metrics = ctx.measureText(labelText);
+                const labelWidth = metrics.width + 16;
+                const labelHeight = 24;
+
+                ctx.beginPath();
+                ctx.roundRect(labelX - labelWidth/2, labelY - labelHeight/2, labelWidth, labelHeight, 4);
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw text
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillText(labelText, labelX, labelY);
+            }
+
+            // Draw scale bar
+            const scaleBarLength = 1 * M_TO_FT; // 1 meter = 3.28 ft
+            const scaleBarPx = scaleBarLength / M_TO_FT * scale;
+
+            ctx.strokeStyle = '#1a1a2e';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'butt';
+
+            const sbX = canvas.width - padding - scaleBarPx;
+            const sbY = canvas.height - 40;
+
+            ctx.beginPath();
+            ctx.moveTo(sbX, sbY);
+            ctx.lineTo(sbX + scaleBarPx, sbY);
+            ctx.stroke();
+
+            // End caps
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(sbX, sbY - 8);
+            ctx.lineTo(sbX, sbY + 8);
+            ctx.moveTo(sbX + scaleBarPx, sbY - 8);
+            ctx.lineTo(sbX + scaleBarPx, sbY + 8);
+            ctx.stroke();
+
+            // Scale label
+            ctx.fillStyle = '#1a1a2e';
+            ctx.font = 'bold 12px Segoe UI, sans-serif';
+            ctx.fillText(`${scaleBarLength.toFixed(1)} ft`, sbX + scaleBarPx/2, sbY - 15);
+
+            // Title
+            ctx.font = 'bold 18px Segoe UI, sans-serif';
+            ctx.fillStyle = '#1a1a2e';
+            ctx.textAlign = 'left';
+            ctx.fillText('Floor Plan', padding, 30);
+
+            ctx.font = '12px Segoe UI, sans-serif';
+            ctx.fillStyle = '#666';
+            ctx.fillText(`Area: ${dimensions.area.toFixed(1)} ft²`, padding, 50);
+        }
+
+        // Update dimensions panel
+        function updateDimensions(dimensions) {
+            document.getElementById('dim-width').innerHTML =
+                `${dimensions.width.toFixed(1)} <small>ft</small>`;
+            document.getElementById('dim-length').innerHTML =
+                `${dimensions.length.toFixed(1)} <small>ft</small>`;
+            document.getElementById('dim-height').innerHTML =
+                `${dimensions.height.toFixed(1)} <small>ft</small>`;
+            document.getElementById('dim-area').innerHTML =
+                `${dimensions.area.toFixed(1)} <small>ft²</small>`;
+
+            // Wall list
+            const wallItems = document.getElementById('wall-items');
+            wallItems.innerHTML = dimensions.walls.map(w =>
+                `<div class="wall-item">
+                    <span class="wall-name">${w.name}</span>
+                    <span class="wall-length">${w.length.toFixed(1)} ft</span>
+                </div>`
+            ).join('');
+        }
+
+        // Generate floor plan
+        async function generateFloorPlan() {
+            const select = document.getElementById('scan-select');
+            const filename = select.value;
+
+            if (!filename) return;
+
+            // Show loading
+            document.getElementById('no-data').style.display = 'none';
+            document.getElementById('loading').style.display = 'flex';
+            canvas.style.display = 'none';
+            document.getElementById('generate-btn').disabled = true;
+
+            try {
+                // Load point cloud
+                const points = await loadPointCloud(filename);
+
+                // Extract wall slices
+                const { wallPoints, height } = extractWallSlices(points);
+
+                // Downsample wall points
+                const gridSize = 0.05;
+                const grid = new Map();
+                wallPoints.forEach(p => {
+                    const key = `${Math.floor(p.x / gridSize)},${Math.floor(p.y / gridSize)}`;
+                    if (!grid.has(key)) {
+                        grid.set(key, p);
+                    }
+                });
+                const downsampledPoints = Array.from(grid.values());
+
+                // Fit rectangle
+                const rect = fitRectangle(downsampledPoints);
+
+                if (!rect) {
+                    throw new Error('Could not detect room boundaries');
+                }
+
+                // Calculate dimensions
+                const dimensions = calculateDimensions(rect, height);
+
+                // Draw floor plan
+                canvas.style.display = 'block';
+                drawFloorPlan(rect, dimensions, downsampledPoints);
+
+                // Update dimensions panel
+                updateDimensions(dimensions);
+
+                // Store current layout
+                currentLayout = { rect, dimensions, wallPoints: downsampledPoints };
+
+                // Enable download
+                document.getElementById('download-btn').disabled = false;
+
+            } catch (error) {
+                console.error('Error generating floor plan:', error);
+                alert('Error generating floor plan: ' + error.message);
+                document.getElementById('no-data').style.display = 'flex';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('generate-btn').disabled = false;
+            }
+        }
+
+        // Download floor plan as PNG
+        function downloadFloorPlan() {
+            const link = document.createElement('a');
+            link.download = `floorplan_${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Event listeners
+        document.getElementById('scan-select').addEventListener('change', (e) => {
+            document.getElementById('generate-btn').disabled = !e.target.value;
+            currentScan = e.target.value;
+        });
+
+        document.getElementById('generate-btn').addEventListener('click', generateFloorPlan);
+        document.getElementById('download-btn').addEventListener('click', downloadFloorPlan);
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (currentLayout) {
+                drawFloorPlan(currentLayout.rect, currentLayout.dimensions, currentLayout.wallPoints);
+            }
+        });
+
+        // Initialize
+        loadScans();
+    </script>
+</body>
+</html>
