@@ -242,16 +242,26 @@ Loop closures:  {len(loop_closures)}
 
     # Generate web viewer compatible output
     try:
-        from src.data_processing.mesh_generator import MeshGenerator
-
         print("\nGenerating web viewer model...")
         map_points = slam.get_map_points()
 
         if len(map_points) > 0:
-            generator = MeshGenerator(map_points)
+            # Center points for better viewing
+            center = map_points.mean(axis=0)
+            points_centered = map_points - center
+
+            # Create web viewer format
+            model_data = {
+                'vertices': points_centered.flatten().tolist(),
+                'faces': []  # Point cloud mode - no faces
+            }
+
             web_output = Path("web/models") / f"{scan_name}.json"
             web_output.parent.mkdir(parents=True, exist_ok=True)
-            generator.save_for_web_viewer(str(web_output))
+
+            with open(web_output, 'w') as f:
+                json.dump(model_data, f)
+
             print(f"[OK] Web model saved: {web_output}")
             print(f"  View at: http://localhost:8000/viewer.html")
 

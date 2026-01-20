@@ -1,0 +1,24 @@
+{
+  "scans": [
+    {
+      "name": "filtered_scan_20260119_165537",
+      "file": "filtered_scan_20260119_165537.json"
+    },
+    {
+      "name": "full_room_20260117_213056",
+      "file": "full_room_20260117_213056.json"
+    },
+    {
+      "name": "kiss_full_room_20260117_215015",
+      "file": "kiss_full_room_20260117_215015.json"
+    },
+    {
+      "name": "my_room",
+      "file": "my_room.json"
+    },
+    {
+      "name": "working_scan",
+      "file": "working_scan.json"
+    }
+  ]
+}

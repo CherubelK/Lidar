@@ -54,6 +54,15 @@ except ImportError as e:
     SO3 = None
     print(f"Warning: Point-LIO not available: {e}")
 
+# IMU-Fused SLAM: Full sensor data utilization
+try:
+    from .imu_fused_slam import IMUFusedSLAM, IMUFusedSLAMConfig, IMUState
+except ImportError as e:
+    IMUFusedSLAM = None
+    IMUFusedSLAMConfig = None
+    IMUState = None
+    print(f"Warning: IMU-Fused SLAM not available: {e}")
+
 __all__ = [
     'PointCloudProcessor',
     'KISSICPOdometry',
@@ -74,5 +83,8 @@ __all__ = [
     'PointLIOConfig',
     'PointLIOProcessor',
     'create_point_lio',
-    'SO3'
+    'SO3',
+    'IMUFusedSLAM',
+    'IMUFusedSLAMConfig',
+    'IMUState'
 ]

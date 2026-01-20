@@ -735,8 +735,8 @@
     </footer>
 
     <script>
-        // Load scan count - use absolute path from web directory
-        fetch('/web/models/')
+        // Load scan count - use relative path from web directory
+        fetch('models/')
             .then(r => r.text())
             .then(html => {
                 const matches = html.match(/\.json/g);
@@ -762,8 +762,8 @@
             if (activeLink) activeLink.classList.add('active');
 
             try {
-                // Fetch from project root using absolute path
-                const response = await fetch('/' + docPath);
+                // Fetch from project root using relative path (go up one level from web/)
+                const response = await fetch('../' + docPath);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
@@ -784,11 +784,11 @@
                     <h1>Document Not Found</h1>
                     <p>Could not load: <code>${docPath}</code></p>
                     <p>Error: ${e.message}</p>
-                    <p>Make sure the server is running: <code>python web/server.py</code></p>
+                    <p>Make sure the server is running: <code>python -m http.server 8000</code> from project root</p>
                     <h2>Troubleshooting</h2>
                     <ul>
                         <li>Check that the file exists in the project root</li>
-                        <li>Try accessing directly: <a href="/${docPath}" target="_blank">/${docPath}</a></li>
+                        <li>Try accessing directly: <a href="../${docPath}" target="_blank">../${docPath}</a></li>
                     </ul>
                 `;
             }

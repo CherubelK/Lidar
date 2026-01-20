@@ -441,28 +441,34 @@ class UnitreeL2UDP:
         Parse IMU data payload (type 104).
 
         Returns quaternion orientation and angular velocity.
-        Structure based on Unitree protocol.
+
+        IMU Payload Structure (56 bytes after frame header):
+        - Bytes 0-15: Header info (sequence, timestamp, etc.) - skip
+        - Bytes 16-31: Quaternion [w, x, y, z] (4 floats)
+        - Bytes 32-43: Angular velocity [x, y, z] (3 floats, rad/s)
+        - Bytes 44-55: Linear acceleration [x, y, z] (3 floats, m/s^2)
         """
         try:
-            if len(payload) < 64:  # Minimum expected size
+            if len(payload) < 56:  # Minimum: 16 header + 40 IMU data
                 return None
 
-            offset = 0
+            # Skip 16-byte header (sequence number, timestamp, etc.)
+            offset = 16
 
-            # Parse quaternion (orientation) - 4 floats
+            # Parse quaternion (orientation) - 4 floats at bytes 16-31
             qw = struct.unpack('<f', payload[offset:offset+4])[0]
             qx = struct.unpack('<f', payload[offset+4:offset+8])[0]
             qy = struct.unpack('<f', payload[offset+8:offset+12])[0]
             qz = struct.unpack('<f', payload[offset+12:offset+16])[0]
             offset += 16
 
-            # Parse angular velocity - 3 floats (rad/s)
+            # Parse angular velocity - 3 floats (rad/s) at bytes 32-43
             gyro_x = struct.unpack('<f', payload[offset:offset+4])[0]
             gyro_y = struct.unpack('<f', payload[offset+4:offset+8])[0]
             gyro_z = struct.unpack('<f', payload[offset+8:offset+12])[0]
             offset += 12
 
-            # Parse linear acceleration - 3 floats (m/s^2)
+            # Parse linear acceleration - 3 floats (m/s^2) at bytes 44-55
             accel_x = struct.unpack('<f', payload[offset:offset+4])[0]
             accel_y = struct.unpack('<f', payload[offset+4:offset+8])[0]
             accel_z = struct.unpack('<f', payload[offset+8:offset+12])[0]

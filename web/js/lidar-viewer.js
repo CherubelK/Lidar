@@ -54,8 +54,11 @@ class LiDARViewer {
         this.controls.maxPolarAngle = Math.PI;
 
         // Lights
+        this.lights = [];
+
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(ambientLight);
+        this.lights.push(ambientLight);
 
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(10, 10, 5);
@@ -63,10 +66,12 @@ class LiDARViewer {
         directionalLight.shadow.camera.near = 0.1;
         directionalLight.shadow.camera.far = 50;
         this.scene.add(directionalLight);
+        this.lights.push(directionalLight);
 
         const fillLight = new THREE.DirectionalLight(0x667eea, 0.3);
         fillLight.position.set(-5, 3, -5);
         this.scene.add(fillLight);
+        this.lights.push(fillLight);
 
         // Grid helper
         const gridHelper = new THREE.GridHelper(20, 20, 0x667eea, 0x444444);
@@ -322,6 +327,67 @@ class LiDARViewer {
         }
     }
 
+    setCameraView(view) {
+        if (!this.mesh) return;
+
+        const box = new THREE.Box3().setFromObject(this.mesh);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const distance = maxDim * 1.5;
+
+        switch (view) {
+            case 'top':
+                this.camera.position.set(0, distance, 0);
+                this.camera.up.set(0, 0, -1);
+                break;
+            case 'front':
+                this.camera.position.set(0, 0, distance);
+                this.camera.up.set(0, 1, 0);
+                break;
+            case 'side':
+                this.camera.position.set(distance, 0, 0);
+                this.camera.up.set(0, 1, 0);
+                break;
+            case 'perspective':
+            case '3D':
+                this.camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+                this.camera.up.set(0, 1, 0);
+                break;
+        }
+
+        this.camera.lookAt(0, 0, 0);
+        this.controls.target.set(0, 0, 0);
+        this.controls.update();
+    }
+
+    toggleAutoRotate() {
+        this.autoRotate = !this.autoRotate;
+        this.controls.autoRotate = this.autoRotate;
+        this.controls.autoRotateSpeed = 2.0;
+    }
+
+    takeScreenshot() {
+        // Render one frame to ensure we capture current state
+        this.renderer.render(this.scene, this.camera);
+
+        // Get canvas data
+        const dataURL = this.renderer.domElement.toDataURL('image/png');
+
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `scan_${Date.now()}.png`;
+        link.href = dataURL;
+        link.click();
+    }
+
+    setPointSize(size) {
+        if (this.mesh && this.mesh.material && this.mesh.material.size !== undefined) {
+            this.mesh.material.size = size * 0.02;
+            this.mesh.material.needsUpdate = true;
+        }
+    }
+
     setupEventListeners() {
         // Scan selection
         document.getElementById('scan-select').addEventListener('change', (e) => {
@@ -373,5 +439,5 @@ class LiDARViewer {
 
 // Initialize viewer when page loads
 window.addEventListener('DOMContentLoaded', () => {
-    new LiDARViewer();
+    window.viewer = new LiDARViewer();
 });
