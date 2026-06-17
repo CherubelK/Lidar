@@ -68,6 +68,9 @@ tmp/
 temp/
 *.tmp
 
+# Live scan session status (runtime artifact written by scripts/scan_session.py)
+web/.scan_status.json
+
 # OS
 Thumbs.db
 .DS_Store

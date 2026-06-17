@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walkthrough - LiDAR Trail Mapper</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; overflow: hidden; }
+        #canvas-container { width: 100vw; height: 100vh; }
+
+        #top-bar {
+            position: absolute; top: 0; left: 0; right: 0; padding: 1rem 1.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(180deg, rgba(15,23,42,0.85), transparent);
+            z-index: 10;
+        }
+        #top-bar a { color: #f8fafc; text-decoration: none; font-weight: 700; }
+        #scan-select {
+            background: #1e293b; color: #f8fafc; border: 1px solid #334155;
+            padding: 8px 12px; border-radius: 8px; font-size: 14px;
+        }
+
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 6px; height: 6px;
+            margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,0.8);
+            z-index: 5; pointer-events: none;
+        }
+
+        #overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(15,23,42,0.85); z-index: 20; cursor: pointer; text-align: center;
+        }
+        #overlay.hidden { display: none; }
+        #overlay .box { max-width: 420px; }
+        #overlay h2 { margin-bottom: 1rem; }
+        #overlay p { color: #94a3b8; margin-bottom: 0.5rem; font-size: 14px; }
+        kbd {
+            background: #334155; border-radius: 4px; padding: 2px 8px; font-family: monospace;
+        }
+
+        #hud {
+            position: absolute; bottom: 1rem; left: 1.5rem; font-size: 12px; color: #94a3b8;
+            background: rgba(15,23,42,0.6); padding: 8px 12px; border-radius: 8px; z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="crosshair"></div>
+
+    <div id="top-bar">
+        <a href="index.html">L2 LiDAR Trail Mapper</a>
+        <select id="scan-select"><option value="">Select a scan...</option></select>
+    </div>
+
+    <div id="hud">WASD move &middot; mouse look &middot; Space/Shift fly up/down &middot; Esc to release mouse</div>
+
+    <div id="overlay">
+        <div class="box">
+            <h2>Walkthrough Mode</h2>
+            <p>Pick a scan above, then click anywhere to start.</p>
+            <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move &middot; mouse to look</p>
+            <p><kbd>Space</kbd> / <kbd>Shift</kbd> to rise / descend &middot; hold <kbd>Ctrl</kbd> to sprint</p>
+            <p><kbd>Esc</kbd> releases the mouse</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script src="js/walkthrough.js"></script>
+</body>
+</html>

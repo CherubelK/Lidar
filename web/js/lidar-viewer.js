@@ -114,10 +114,13 @@ class LiDARViewer {
                 select.appendChild(option);
             });
 
-            // Auto-load first scan if available
-            if (scans.length > 0) {
-                select.value = scans[0];
-                this.loadModel(scans[0]);
+            // Prefer a scan requested via ?scan=filename.json, else load the first one
+            const requested = new URLSearchParams(window.location.search).get('scan');
+            const toLoad = (requested && scans.includes(requested)) ? requested : scans[0];
+
+            if (toLoad) {
+                select.value = toLoad;
+                this.loadModel(toLoad);
             }
         } catch (error) {
             console.error('Error loading scan list:', error);

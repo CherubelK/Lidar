@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Scans - LiDAR Trail Mapper</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1; --secondary: #8b5cf6; --accent: #06b6d4;
+            --bg-dark: #0f172a; --bg-card: #1e293b; --border: #334155;
+            --text-primary: #f8fafc; --text-secondary: #94a3b8;
+            --added: #22c55e; --removed: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); height: 100vh; overflow: hidden; }
+        #app { display: flex; height: 100vh; }
+
+        #sidebar { width: 320px; background: var(--bg-card); border-right: 1px solid var(--border); padding: 1.5rem; overflow-y: auto; }
+        #sidebar h1 { font-size: 1.1rem; margin-bottom: 1.5rem; }
+        #sidebar a.back { color: var(--text-secondary); text-decoration: none; font-size: 13px; display: block; margin-bottom: 1rem; }
+
+        label { display: block; font-size: 13px; color: var(--text-secondary); margin: 1rem 0 6px; }
+        select {
+            width: 100%; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary);
+            padding: 10px 12px; border-radius: 8px; font-size: 14px;
+        }
+        button {
+            width: 100%; margin-top: 1.5rem; padding: 12px; border-radius: 8px; font-weight: 600;
+            border: none; cursor: pointer; background: var(--primary); color: white; font-size: 14px;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .legend { display: flex; gap: 1rem; margin-top: 1.5rem; font-size: 13px; }
+        .legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .dot.added { background: var(--added); }
+        .dot.removed { background: var(--removed); }
+
+        .stats { margin-top: 1.5rem; }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+        .stat-row .v { font-weight: 700; }
+
+        #cluster-list { margin-top: 1rem; max-height: 220px; overflow-y: auto; }
+        .cluster-item {
+            padding: 8px 10px; border-radius: 6px; font-size: 12px; margin-bottom: 6px; cursor: pointer;
+            background: var(--bg-dark); border: 1px solid var(--border);
+        }
+        .cluster-item:hover { border-color: var(--primary); }
+        .cluster-item.added { border-left: 3px solid var(--added); }
+        .cluster-item.removed { border-left: 3px solid var(--removed); }
+
+        #canvas-container { flex: 1; position: relative; }
+        #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(15,23,42,0.7); color: var(--text-secondary); }
+        #loading.hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="sidebar">
+            <a href="index.html" class="back">&larr; Back</a>
+            <h1>Compare Scans</h1>
+
+            <label for="baseline-select">Baseline (earlier scan)</label>
+            <select id="baseline-select"><option value="">Select...</option></select>
+
+            <label for="current-select">Current (later scan)</label>
+            <select id="current-select"><option value="">Select...</option></select>
+
+            <button id="btn-compare">Compare</button>
+
+            <div class="legend">
+                <span><span class="dot added"></span> Added</span>
+                <span><span class="dot removed"></span> Removed</span>
+            </div>
+
+            <div class="stats" id="stats"></div>
+
+            <div id="cluster-list"></div>
+        </div>
+        <div id="canvas-container">
+            <div id="loading" class="hidden">Comparing scans...</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/compare.js"></script>
+</body>
+</html>

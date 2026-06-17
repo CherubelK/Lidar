@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Control - LiDAR Trail Mapper</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1; --secondary: #8b5cf6; --accent: #06b6d4;
+            --bg-dark: #0f172a; --bg-card: #1e293b; --bg-hover: #334155;
+            --text-primary: #f8fafc; --text-secondary: #94a3b8; --border: #334155;
+            --success: #22c55e; --warning: #f59e0b; --danger: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-primary); }
+        nav { background: rgba(15,23,42,0.95); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        nav a.logo { color: var(--text-primary); text-decoration: none; font-weight: 700; }
+        nav .links a { color: var(--text-secondary); text-decoration: none; margin-left: 1.5rem; font-size: 14px; }
+        nav .links a.active { color: var(--text-primary); }
+        main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+        h1 { margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-secondary); margin-bottom: 2rem; }
+        .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+        .controls-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: end; }
+        label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+        input[type="text"], input[type="number"] {
+            background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary);
+            padding: 10px 12px; border-radius: 8px; font-size: 14px; width: 220px;
+        }
+        button {
+            padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 14px;
+            border: none; cursor: pointer; color: white;
+        }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-start { background: var(--success); }
+        .btn-stop { background: var(--danger); }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .stat { background: var(--bg-dark); border-radius: 10px; padding: 1rem; }
+        .stat .label { font-size: 12px; color: var(--text-secondary); }
+        .stat .value { font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
+        .phase-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .phase-idle { background: rgba(148,163,184,0.2); color: var(--text-secondary); }
+        .phase-scanning { background: rgba(34,197,94,0.2); color: var(--success); }
+        .phase-processing { background: rgba(245,158,11,0.2); color: var(--warning); }
+        .phase-error { background: rgba(239,68,68,0.2); color: var(--danger); }
+        .phase-completed { background: rgba(34,197,94,0.2); color: var(--success); }
+        .error-msg { color: var(--danger); margin-top: 1rem; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        th { color: var(--text-secondary); font-weight: 500; font-size: 12px; text-transform: uppercase; }
+        td a { color: var(--accent); text-decoration: none; margin-right: 12px; }
+        td a:hover { text-decoration: underline; }
+        .empty-state { color: var(--text-secondary); padding: 2rem; text-align: center; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">L2 LiDAR Trail Mapper</a>
+        <div class="links">
+            <a href="viewer.html">3D Viewer</a>
+            <a href="walkthrough.html">Walkthrough</a>
+            <a href="compare.html">Compare</a>
+            <a href="scan.html" class="active">Scan Control</a>
+        </div>
+    </nav>
+    <main>
+        <h1>Scan Control</h1>
+        <p class="subtitle">Start/stop a live capture session and browse previously saved scans.</p>
+
+        <div class="card">
+            <h2>New Scan</h2>
+            <div class="controls-row">
+                <div>
+                    <label for="session-name">Session name</label>
+                    <input type="text" id="session-name" placeholder="warehouse_aisle_3">
+                </div>
+                <div>
+                    <label for="duration">Max duration (seconds, optional)</label>
+                    <input type="number" id="duration" placeholder="e.g. 60" min="1">
+                </div>
+                <button id="btn-start" class="btn-start">Start Scan</button>
+                <button id="btn-stop" class="btn-stop" disabled>Stop Scan</button>
+            </div>
+
+            <div id="status-section">
+                <p style="margin-top:1.5rem;">
+                    Status: <span id="phase-badge" class="phase-badge phase-idle">idle</span>
+                </p>
+                <div class="status-grid">
+                    <div class="stat"><div class="label">Elapsed</div><div class="value" id="stat-elapsed">-</div></div>
+                    <div class="stat"><div class="label">Points captured</div><div class="value" id="stat-points">-</div></div>
+                    <div class="stat"><div class="label">Packets</div><div class="value" id="stat-packets">-</div></div>
+                </div>
+                <p class="error-msg" id="error-msg"></p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Saved Scans</h2>
+            <div id="scan-library">
+                <div class="empty-state">Loading...</div>
+            </div>
+        </div>
+    </main>
+    <script src="js/scan-control.js"></script>
+</body>
+</html>

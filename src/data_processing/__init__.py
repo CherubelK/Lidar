@@ -10,6 +10,9 @@ Includes:
 - Pose Graph Optimization
 - Complete SLAM system
 - Point-LIO: Tightly-coupled LiDAR-Inertial Odometry
+- Change Detection: diff repeated scans of the same space over time
+- Material Classification: surface typing from reflectivity intensity
+- Occupancy Detection: privacy-preserving transient object tracking
 """
 
 try:
@@ -63,6 +66,10 @@ except ImportError as e:
     IMUState = None
     print(f"Warning: IMU-Fused SLAM not available: {e}")
 
+from .change_detection import ChangeDetector, ChangeReport, ChangeCluster
+from .material_classification import MaterialClassifier, MaterialBand, DEFAULT_BANDS
+from .occupancy_detection import OccupancyDetector, TrackedOccupant
+
 __all__ = [
     'PointCloudProcessor',
     'KISSICPOdometry',
@@ -86,5 +93,13 @@ __all__ = [
     'SO3',
     'IMUFusedSLAM',
     'IMUFusedSLAMConfig',
-    'IMUState'
+    'IMUState',
+    'ChangeDetector',
+    'ChangeReport',
+    'ChangeCluster',
+    'MaterialClassifier',
+    'MaterialBand',
+    'DEFAULT_BANDS',
+    'OccupancyDetector',
+    'TrackedOccupant',
 ]
