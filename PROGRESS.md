@@ -160,7 +160,30 @@
 
 ## 📋 Next Steps
 
-### Phase 2: Trail Mapping Application (Next Phase)
+### Phase 2 Pivot: Market Research (2026-06-16)
+
+The original Phase 2 plan (hiking trail mapping app, below) was re-evaluated against the broader market before further build-out. Findings:
+
+| Use case | Verdict | Why |
+|---|---|---|
+| Hiking trail mapping (original Phase 2 plan) | ❌ Weak | AllTrails/Wikiloc own consumer hiking via a route-data moat; no demand for point-cloud trail scans |
+| Consumer 3D scanning app (Polycam-style) | ❌ Weak | Saturated; undercut by free phone-native LiDAR apps |
+| Survey-grade mapping (construction/real estate/forestry) | ❌ Accuracy gap | Market is real but buyers need mm-level accuracy the L2 can't hit |
+| Aerial drone survey (wide-area terrain) | ❌ Disqualified | L2's 30m range can't see the ground from typical survey altitude |
+| Robotics navigation middleware (Go2/G1-style ground robots, AMRs) | ⚠️ Plausible | The L2's intended use case, but crowded and low-differentiation |
+| Indoor inspection drone (one-off building sweep / "4D" model) | ⚠️ Real market, high moat | Flyability/Skydio dominate via hazardous-area certification + insurance |
+| **Warehouse inventory scanning drone (recurring repeat-scans)** | ✅ **Selected direction** | $7.2B market (2026); structured indoor environment suits the L2's range/accuracy; underserved SMB/regional-3PL tier below Corvus/Verity's enterprise accounts |
+
+**Decision**: Pivot Phase 2 toward an autonomous indoor drone that performs recurring inventory cycle-count scans for small/regional 3PLs and mid-market warehouse operators — a segment too small for Corvus/Verity's enterprise sales motion (out of ~9,300 US 3PL facilities, the two incumbents combined appear to have landed only a few hundred sites).
+
+**Immediate next steps**:
+1. **Customer discovery** — 8–10 calls with warehouse ops managers / 3PL owner-operators at single-site or 2–3-site companies (sourced via LinkedIn, IWLA member directory, WMS user communities) to validate cycle-counting pain, cost, and willingness to pay before further build-out.
+2. **Bin-level localization test** — reuse the existing handheld L2 + SLAM stack (KISS-ICP, ikd-Tree, loop closure) to test localization accuracy against static shelving, as a cheap de-risking step before any drone/flight engineering.
+3. **Live demo asset** — record a short scan demo to use in discovery calls in place of an abstract pitch.
+
+Trail mapping work below is retained for reference but deprioritized.
+
+### Original Phase 2 Plan: Trail Mapping Application (deprioritized)
 
 1. **Extended Field Testing**
    - Capture outdoor trail data
@@ -238,5 +261,6 @@ z = C + a_axis_dist
 
 ---
 
-*Last Updated: 2026-01-18*
+*Last Updated: 2026-06-16*
 *Phase 1.6 Status: ✅ COMPLETE (SLAM + IMU Integration)*
+*Phase 2 Status: 🔄 Pivoted to warehouse inventory drone — customer discovery in progress*
