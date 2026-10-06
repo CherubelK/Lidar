@@ -1,313 +1,143 @@
-# Unitree L2 LiDAR Hiking Trail Mapping
+# Unitree L2 LiDAR SLAM Toolkit
 
-A complete Python-based system for capturing, processing, and visualizing hiking trail data using the Unitree L2 LiDAR sensor, with interactive web-based 3D visualization.
+A Python toolkit for the Unitree 4D LiDAR L2: raw UDP capture, point-cloud processing, a complete SLAM pipeline with loop closure, and a browser-based 3D viewer. Built and validated on real hardware.
 
-## Project Status
+- **Capture** the L2's UDP packet stream directly, with no vendor SDK, and convert it to metre-scale 3D points.
+- **Map** with KISS-ICP odometry, an incremental k-d tree, Scan Context loop detection, and pose-graph optimisation, including handheld scanning with IMU deskewing.
+- **Inspect** results in a Three.js viewer that supports live streaming, scan comparison, change detection, and floor-plan generation.
 
-✅ **Phase 1: LiDAR Data Capture and Processing** - Complete
-✅ **Phase 1.5: 3D Mesh Generation & Web Visualization** - Complete
-✅ **Phase 1.6: Complete SLAM with Loop Closure** - Complete
-📋 **Phase 2: Backend Development** - Planned
+## Status
 
-## Features
+| Area | State |
+|---|---|
+| Sensor capture and 3D transform | Validated on hardware: ~287 points per packet, 586k points in a 10-second room scan |
+| Point-cloud pipeline | Outlier removal, voxel downsampling, RANSAC ground segmentation, normal estimation, Delaunay meshing (71k faces on a room scan) |
+| SLAM with loop closure | Working; a 75-scan handheld test closed 4 loops |
+| Web viewer | Working: viewer, live view, scan control, walkthrough, compare, floor plan |
+| Change detection, occupancy, material classification | Implemented in `src/data_processing/`, exposed through the web server |
+| Multi-device mesh networking | Prototype in `src/networking/` |
+| Next phase | Pivoted from trail mapping to recurring warehouse inventory scans. See [PROGRESS.md](PROGRESS.md) for the market analysis and decision |
 
-### Data Capture & Processing
-- ✅ LiDAR data capture interface for Unitree L2 sensor
-- ✅ UDP-based real-time data reception
-- ✅ Point cloud processing and filtering
-- ✅ Statistical outlier removal
-- ✅ Ground plane segmentation (RANSAC)
-- ✅ Voxel-based downsampling
-- ✅ Normal estimation
-
-### 3D Mapping & Visualization
-- ✅ 3D mesh generation from point clouds
-- ✅ Multiple export formats (OBJ, PLY, JSON)
-- ✅ Interactive web-based 3D viewer
-- ✅ Height-based elevation coloring
-- ✅ Multiple display modes (solid, wireframe, points)
-- ✅ Camera controls and presets
-- ✅ Screenshot export
-
-### Trail Data Management
-- ✅ Session-based capture organization
-- ✅ Multi-format storage (NPY, NPZ, JSON, OBJ, PLY)
-- ✅ Metadata tracking
-
-### SLAM (Simultaneous Localization and Mapping)
-- ✅ KISS-ICP odometry for frame-to-frame matching
-- ✅ ikd-Tree for efficient incremental map storage
-- ✅ Scan Context for loop closure detection
-- ✅ Pose Graph Optimization for drift correction
-- ✅ Handheld scanning support with motion tolerance
-- ✅ IMU integration for point cloud deskewing (ORB-SLAM3 inspired)
-
-## Project Structure
+## How the SLAM pipeline fits together
 
 ```
-Lidar/
-├── src/
-│   ├── lidar_interface/      # Unitree L2 sensor communication
-│   │   ├── unitree_l2.py     # Main sensor interface
-│   │   └── data_capture.py   # Data capture sessions
-│   ├── data_processing/      # Point cloud processing
-│   │   └── point_cloud_processor.py
-│   └── visualization/        # 3D visualization tools
-│       └── visualizer.py
-├── data/
-│   ├── raw/                  # Raw LiDAR captures
-│   └── processed/            # Processed point clouds
-├── tests/                    # Unit tests
-├── notebooks/                # Jupyter notebooks for exploration
-├── config/                   # Configuration files
-└── docs/                     # Documentation
-
+L2 UDP packets ──► parse + calibrate ──► point cloud (N×3, metres)
+                                              │
+                                              ▼
+                                   KISS-ICP odometry ──► pose (4×4)
+                                              │              │
+                            Scan Context descriptor     pose graph (odometry edge)
+                                              │              │
+                                  loop detected? ──yes──► ICP verify ──► loop edge
+                                              │                               │
+                                              ▼                               ▼
+                                   ikd-Tree global map ◄──── pose-graph optimisation
+                                              │
+                                              ▼
+                              NPY / PLY / OBJ / JSON  ──►  web viewer
 ```
 
-## Installation
+Full component descriptions and tuning parameters are in [docs/COMPLETE_SLAM.md](docs/COMPLETE_SLAM.md).
 
-### Prerequisites
+## Quick start
 
-- Python 3.8 or higher
-- Unitree L2 LiDAR sensor
-- Git
+### Requirements
+- Python 3.11 is recommended. Python 3.13 works; Open3D does not yet support it, so the NumPy processing path is used automatically.
+- A Unitree L2 on the same network for live capture. Everything else runs on the committed sample scans.
 
-### Setup Steps
+### Install
 
-1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/CherubelK/Lidar.git
 cd Lidar
-```
-
-2. Create a virtual environment:
-```bash
 python -m venv venv
-
-# On Windows:
-venv\Scripts\activate
-
-# On macOS/Linux:
-source venv/bin/activate
-```
-
-3. Install dependencies:
-```bash
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+python setup_check.py             # verifies the environment
 ```
 
-4. Configure the LiDAR sensor:
-   - Edit connection settings in `config/lidar_config.yaml` (to be created)
-   - Set the correct IP address and port for your Unitree L2 sensor
-   - Refer to Unitree L2 documentation for network setup
+### Connect the sensor
 
-## Quick Start
-
-### Complete Pipeline: Scan and Build 3D Map
-
-The easiest way to get started is using the complete pipeline script:
+The L2 streams UDP from `192.168.1.62:6101` to a host at `192.168.1.2:6201` by default. Give your machine the static IP `192.168.1.2` on the interface wired to the sensor, allow inbound UDP 6201 through the firewall, then:
 
 ```bash
-# Scan a trail and generate 3D visualization (using synthetic data for testing)
-python examples/scan_and_build_map.py my_trail --duration 60
-
-# Or with real Unitree L2 hardware:
-python examples/scan_and_build_map.py my_trail --duration 120 --real-sensor
+python examples/test_sensor_connection.py
 ```
 
-This will:
-1. Capture LiDAR data from the trail
-2. Process and clean the point cloud
-3. Generate 3D mesh
-4. Export to multiple formats (OBJ, PLY, JSON)
-5. Prepare for web visualization
+Defaults live in `UnitreeL2Config` in [src/lidar_interface/unitree_l2_udp.py](src/lidar_interface/unitree_l2_udp.py). Packet format and calibration details are in [docs/UNITREE_L2_INTEGRATION.md](docs/UNITREE_L2_INTEGRATION.md).
 
-Then view the results:
+### Scan
 
 ```bash
-# Start the web viewer
+# 10-second static room scan, exported for the web viewer
+python examples/quick_scan.py
+
+# Full SLAM with loop closure (move slowly, return to the start to close the loop)
+python examples/complete_slam_scan.py --duration 120 --name my_room
+
+# Handheld SLAM with IMU deskewing
+python examples/handheld_slam_scan.py --duration 60 --name walkthrough
+```
+
+Outputs land in `data/<mode>/<name_timestamp>/` as NPY, PLY, OBJ, JSON, plus poses, trajectory, and metadata.
+
+### View
+
+```bash
 cd web
-python server.py
+python server.py                  # serves on http://localhost:8000 and opens a browser
 ```
 
-Open `http://localhost:8000` in your browser and select your trail from the dropdown.
+| Page | Purpose |
+|---|---|
+| `viewer.html` | Rotate, pan, zoom; solid, wireframe, and point modes; height colouring; camera presets; screenshots |
+| `live.html` | Live point stream from the sensor |
+| `scan.html` | Start and stop scans from the browser |
+| `walkthrough.html` | First-person walkthrough of a map |
+| `compare.html` | Diff two scans with change detection |
+| `floorplan.html` | 2D floor plan from a scan |
 
-### Manual Workflow
+## Repository layout
 
-#### Step 1: Capturing LiDAR Data
-
-```python
-from src.lidar_interface import LiDARDataCapture
-
-# Start a capture session
-capture = LiDARDataCapture(output_dir="data/raw")
-
-# Begin session
-capture.start_session(session_name="trail_001")
-
-# Capture frames
-capture.capture_continuous(duration_seconds=60)
-
-# End session
-capture.end_session()
 ```
-
-### Processing Point Cloud Data
-
-```python
-from src.data_processing import PointCloudProcessor
-import numpy as np
-
-# Load captured data
-processor = PointCloudProcessor()
-
-# Load raw points
-raw_points = np.load("data/raw/trail_001/frame_000000.npy")
-
-# Process the data
-result = processor.process_trail_scan(
-    raw_points,
-    remove_outliers=True,
-    downsample_voxel=0.05,
-    segment_ground=True
-)
-
-# Save processed data
-processor.save_processed_cloud(
-    result['processed_points'],
-    result['normals'],
-    "data/processed/trail_001_processed.pcd"
-)
-```
-
-### Visualizing Point Clouds
-
-```python
-from src.visualization import PointCloudVisualizer
-
-visualizer = PointCloudVisualizer()
-
-# Visualize processed point cloud
-visualizer.visualize_point_cloud(
-    result['processed_points'],
-    normals=result['normals']
-)
-
-# Plot statistics
-visualizer.plot_point_cloud_stats(
-    result['processed_points'],
-    save_path="stats.png"
-)
-```
-
-## Development Roadmap
-
-### ✅ Phase 1: LiDAR Data Capture
-- [x] Project structure setup
-- [x] Basic LiDAR interface
-- [x] Data capture system
-- [x] Point cloud processing pipeline
-- [x] Visualization tools
-- [x] Complete Unitree L2 UDP integration
-- [x] Field testing and validation
-
-### ✅ Phase 1.5: 3D Mesh Generation
-- [x] Point cloud to mesh conversion
-- [x] Web-based 3D viewer (Three.js)
-- [x] Multiple export formats
-
-### ✅ Phase 1.6: Complete SLAM System
-- [x] KISS-ICP odometry
-- [x] ikd-Tree incremental map storage
-- [x] Scan Context loop closure
-- [x] Pose Graph Optimization
-- [x] Handheld scanning with IMU compensation
-
-### 🔜 Phase 2: Backend Development
-- [ ] Trail segmentation algorithms
-- [ ] REST API development
-- [ ] Database schema design
-- [ ] Cloud storage integration
-
-### 📋 Phase 3: Mobile App Development
-- [ ] Framework selection (React Native/Flutter)
-- [ ] 3D rendering on mobile
-- [ ] GPS integration
-- [ ] Offline map support
-- [ ] UI/UX design
-
-### 📋 Phase 4: Integration & Testing
-- [ ] End-to-end testing
-- [ ] Field trials
-- [ ] Performance optimization
-- [ ] User feedback integration
-
-## Important Notes
-
-### Unitree L2 Integration
-
-⚠️ **The current implementation is a template.** You need to:
-
-1. Obtain the official Unitree L2 SDK/API documentation
-2. Update [src/lidar_interface/unitree_l2.py](src/lidar_interface/unitree_l2.py) with actual SDK calls
-3. Configure network settings for your specific sensor
-4. Test connection and data capture with real hardware
-
-The placeholder code in `unitree_l2.py` generates random test data. Replace the TODO sections with actual Unitree L2 SDK implementation.
-
-### Data Storage
-
-LiDAR data can be very large. The system saves data in two formats:
-- `.npy` files: Fast NumPy binary format for processing
-- `.pcd` files: Open3D format for visualization
-
-Configure cloud storage (Phase 2) for production use.
-
-## Testing
-
-Run tests:
-```bash
-pytest tests/
-```
-
-Run with coverage:
-```bash
-pytest --cov=src tests/
+src/
+  lidar_interface/     UDP packet parser, calibration, capture sessions
+  data_processing/     point-cloud ops, KISS-ICP, ikd-Tree, Scan Context, pose graph,
+                       IMU integration, Point-LIO, change detection, occupancy, materials
+  visualization/       matplotlib plots and statistics
+  networking/          multi-device mesh prototype, map merging, encryption
+web/                   Three.js viewer and the Python dev server
+examples/              runnable scripts for every capture and SLAM mode, each with a README
+docs/                  SLAM internals, hardware integration, system wiring, GPS notes
+tests/                 pytest suite (synthetic data, no hardware needed)
+config/                lidar_config.example.yaml
+data/                  sample scans from real sessions (room scans, handheld SLAM runs)
 ```
 
 ## Documentation
 
-Detailed documentation for each module:
-- [LiDAR Interface](docs/lidar_interface.md) (to be created)
-- [Data Processing](docs/data_processing.md) (to be created)
-- [API Reference](docs/api_reference.md) (to be created)
+- [GETTING_STARTED.md](GETTING_STARTED.md): step-by-step setup
+- [docs/COMPLETE_SLAM.md](docs/COMPLETE_SLAM.md): odometry, mapping, loop closure, optimisation
+- [docs/UNITREE_L2_INTEGRATION.md](docs/UNITREE_L2_INTEGRATION.md): packet format and coordinate transform
+- [docs/SYSTEM_INTEGRATION.md](docs/SYSTEM_INTEGRATION.md): L2 + Raspberry Pi + RTK GPS wiring and power
+- [docs/MULTI_DEVICE_MESH.md](docs/MULTI_DEVICE_MESH.md): multi-sensor networking design
+- [docs/WHY_GPS_FAILS_INDOORS.md](docs/WHY_GPS_FAILS_INDOORS.md): why the indoor path uses SLAM rather than GNSS
+- [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md): command cheat sheet
+- `examples/README_*.md`: one guide per scanning mode (scanning, ICP odometry, KISS-ICP, GPS setup, positioning options, multi-device)
+- [PROGRESS.md](PROGRESS.md): build log, validation results, and the Phase 2 decision
 
-## Contributing
+## Tests
 
-This is a personal project. If you'd like to contribute:
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
+```bash
+pytest tests/ -v
+```
 
-## License
+Covers the processing pipeline, meshing, and point-cloud merging using synthetic data.
 
-[Specify your license here]
+## Acknowledgements
 
-## Acknowledgments
+Algorithms follow the published KISS-ICP, ikd-Tree, Scan Context, and Point-LIO papers. Visualisation uses Three.js. Thanks to Unitree Robotics for the L2 and to the Open3D community.
 
-- Unitree Robotics for the L2 LiDAR sensor
-- Open3D community for point cloud processing tools
-- Point Cloud Library (PCL) developers
+## Author
 
-## Contact
-
-[Your contact information]
-
-## Resources
-
-- [Unitree L2 Documentation](https://www.unitree.com/)
-- [Open3D Documentation](http://www.open3d.org/docs/)
-- [Point Cloud Library](https://pointclouds.org/)
-- [Project Documentation](unitree_lidar_project.md)
+Cherubel Kefyalew · [github.com/CherubelK](https://github.com/CherubelK)
